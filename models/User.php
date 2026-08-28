@@ -1,97 +1,136 @@
 <?php
 
-declare(strict_types=1);
-
 namespace app\models;
 
-use yii\base\BaseObject;
+use Yii;
+use yii\base\NotSupportedException;
+use yii\behaviors\TimestampBehavior;
+use yii\db\ActiveRecord;
+use yii\db\Expression;
 use yii\web\IdentityInterface;
 
-class User extends BaseObject implements IdentityInterface
+/**
+ * @property int $user_id
+ * @property string $nama
+ * @property string $email
+ * @property string $username
+ * @property string $password
+ * @property string $auth_key
+ * @property string $role
+ * @property bool $is_active
+ */
+class User extends ActiveRecord implements IdentityInterface
 {
-    public int|string $id = '';
-    public string $username = '';
-    public string $passwordHash = '';
-    public string $authKey = '';
-    public string $accessToken = '';
-    private static array $_users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            // password: admin
-            'passwordHash' => '$2y$13$gYAywKSkhfZDq9FLNdm7buKnvlRxDexf5xipSMAxQPDUxpaptmZJu',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
+    public static function tableName()
+    {
+        return '{{%users}}';
+    }
+
+    public function rules()
+    {
+        return [
+            [['nama', 'email', 'username', 'password', 'role'], 'required'],
+            [['nama', 'username'], 'string', 'max' => 150],
+            ['email', 'email'],
+            ['email', 'string', 'max' => 150],
+            ['username', 'unique'],
+            ['email', 'unique'],
+            ['role', 'in', 'range' => ['administrasi', 'notulen']],
+            ['is_active', 'boolean'],
+            ['is_active', 'default', 'value' => true],
+        ];
+    }
+
+    public function behaviors()
+    {
+        return [
+            'timestamp' => [
+                'class' => TimestampBehavior::class,
+                'createdAtAttribute' => 'created_at',
+                'updatedAtAttribute' => 'updated_at',
+                'value' => new Expression('NOW()'),
+            ],
+        ];
+    }
+
+    /* ================= IdentityInterface ================= */
+
+    public static function findIdentity($id)
+    {
+        return static::findOne(['user_id' => $id, 'is_active' => true, 'deleted_at' => null]);
+    }
+
+    public static function findIdentityByAccessToken($token, $type = null)
+    {
+        throw new NotSupportedException('Login lewat access token tidak didukung, gunakan username & password.');
+    }
+
+    public function getId()
+    {
+        return $this->user_id;
+    }
+
+    public function getAuthKey()
+    {
+        return $this->auth_key;
+    }
+
+    public function validateAuthKey($authKey)
+    {
+        return $this->auth_key === $authKey;
+    }
+
+    /* ================= Permission) ================= */
+    private const ROLE_PERMISSIONS = [
+        'administrasi' => [
+            'manageAgenda',
+            'manageUnitLokasi',
+            'manageMember',
+            'manageLampiran',
+            'viewLaporan',
+            'viewAgenda',
         ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            // password: demo
-            'passwordHash' => '$2y$13$alRLq1PGVMlGYwS/Y3iy3ewQns1Z8ol8Iq6Zb5k7ZwEhblA1aL29y',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
+        'notulen' => [
+            'manageLampiran',
+            'viewAgenda',
         ],
     ];
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentity($id): static|null
+
+    public function can(string $permission): bool
     {
-        return isset(self::$_users[$id]) ? new static(self::$_users[$id]) : null;
+        return in_array($permission, self::ROLE_PERMISSIONS[$this->role] ?? [], true);
+    }
+
+    /* ================= Helper untuk LoginForm ================= */
+
+    public static function findByUsername(string $username): ?self
+    {
+        return static::findOne(['username' => $username, 'is_active' => true, 'deleted_at' => null]);
+    }
+
+    public function validatePassword(string $password): bool
+    {
+        return Yii::$app->security->validatePassword($password, $this->password);
+    }
+
+    public function setPassword(string $password): void
+    {
+        $this->password = Yii::$app->security->generatePasswordHash($password);
+    }
+
+    public function generateAuthKey(): void
+    {
+        $this->auth_key = Yii::$app->security->generateRandomString();
     }
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
-    public static function findIdentityByAccessToken($token, $type = null): static|null
+    public function beforeSave($insert)
     {
-        foreach (self::$_users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
+        if ($insert && empty($this->auth_key)) {
+            $this->generateAuthKey();
         }
-
-        return null;
-    }
-
-    /**
-     * Finds user by username
-     *
-     * @param string $username
-     * @return static|null
-     */
-    public static function findByUsername(string $username): static|null
-    {
-        foreach (self::$_users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getId(): int|string
-    {
-        return $this->id;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getAuthKey(): string|null
-    {
-        return $this->authKey;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function validateAuthKey($authKey): bool
-    {
-        return $this->authKey === $authKey;
+        return parent::beforeSave($insert);
     }
 }
