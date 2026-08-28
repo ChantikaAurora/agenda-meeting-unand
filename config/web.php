@@ -30,7 +30,7 @@ $config = [
             'class' => \yii\caching\FileCache::class,
         ],
         'user' => [
-            'identityClass' => \app\models\User::class,
+            'identityClass' => '\app\models\User',
             'enableAutoLogin' => true,
         ],
         'errorHandler' => [
@@ -46,7 +46,7 @@ $config = [
                 ],
             ],
         ],
-        'db' => $db,
+        'db' => require __DIR__ . '/db.php',
         /*
         'urlManager' => [
             'enablePrettyUrl' => true,
