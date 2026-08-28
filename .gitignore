@@ -1,0 +1,61 @@
+# phpstorm project files
+.idea
+
+# visual studio code project files
+.vscode
+
+# netbeans project files
+nbproject
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# windows thumbnail cache
+Thumbs.db
+
+# composer vendor dir
+/vendor
+
+# composer itself is not needed
+composer.phar
+
+# Mac DS_Store Files
+.DS_Store
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/phpunit.xml
+
+tests/_output/*
+tests/_support/_generated
+
+#vagrant folder
+/.vagrant
+
+#cegah hal penting masuk ke github
+/config/db.php
+
+# runtime cache, log, & file sementara yang di-generate Yii2 (jangan pernah commit)
+/runtime
+
+# hasil compile/publish asset Yii2, di-generate otomatis, jangan commit
+/web/assets/*
+!/web/assets/.gitkeep
+
+# file environment sensitif (kalau nanti pakai .env untuk konfigurasi)
+.env
+
+# folder backup database manual (kalau ada)
+/backups
+
+# dependency Node.js (kalau nanti pakai npm/yarn untuk asset frontend)
+node_modules
+
+# cache hasil test PHPUnit/Codeception
+.phpunit.result.cache
+
+# entry point khusus testing, tidak perlu ikut production
+/web/index-test.php
