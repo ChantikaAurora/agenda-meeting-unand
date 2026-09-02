@@ -1,118 +1,94 @@
 <?php
 
 /** @var yii\web\View $this */
-/** @var yii\bootstrap5\ActiveForm $form */
-
 /** @var app\models\LoginForm $model */
 
-use yii\bootstrap5\ActiveForm;
-use yii\bootstrap5\Html;
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
 
-$this->title = 'Login to your account';
-$this->params['breadcrumbs'][] = $this->title;
-$this->params['meta_description'] = 'Log in to access your Yii2 application account.';
-$this->params['meta_keywords'] = 'yii, yii2, login, sign in, authentication';
-$htmlIcon = <<<HTML
-{label}<div class="input-group"><span class="input-group-text" aria-hidden="true">%s</span>{input}</div>{error}{hint}
-HTML;
-$labelOptions = ['class' => 'form-label fw-semibold small'];
+$this->title = 'Login - Sistem Manajemen Agenda Rapat';
 ?>
-<div class="site-login d-flex align-items-center justify-content-center py-5">
-    <div class="card border-0 overflow-hidden login-split-card">
-        <div class="row g-0">
+<div class="login-card">
 
-            <!-- Brand panel -->
-            <div class="col-md-5 d-none d-md-flex login-brand-panel text-white">
-                <div class="d-flex flex-column justify-content-between p-4 p-lg-5 w-100">
-                    <div>
-                        <?= Html::img(
-                            Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
-                            [
-                                'alt' => 'Yii Framework',
-                                'class' => 'mb-4',
-                                'height' => 40,
-                            ],
-                        ) ?>
-                    </div>
-                    <div>
-                        <h2 class="fw-bold mb-3 login-brand-title">
-                            Welcome<br>Back
-                        </h2>
-                        <p class="opacity-75 mb-0 login-brand-text">
-                            Log in to access your Yii2 application and manage your account.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form panel -->
-            <div class="col-md-7">
-                <div class="p-4 p-lg-5">
-                    <div class="text-center mb-4">
-                        <!-- Mobile-only logo -->
-                        <div class="d-md-none mb-3">
-                            <?= Html::img(
-                                Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
-                                [
-                                    'alt' => 'Yii Framework',
-                                    'class' => 'login-mobile-logo',
-                                    'height' => 36,
-                                ],
-                            ) ?>
-                        </div>
-                        <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">Enter your credentials to continue</p>
-                    </div>
-
-                    <?php $form = ActiveForm::begin(['id' => 'login-form']); ?>
-
-                    <div class="mb-3">
-                        <?= $form->field($model, 'username', [
-                            'options' => ['class' => 'mb-0'],
-                            'template' => sprintf($htmlIcon, '&#128100;'),
-                            'inputOptions' => [
-                                'class' => 'form-control',
-                                'placeholder' => 'username',
-                                'autofocus' => true,
-                            ],
-                        ])->textInput()->label('Your Username', $labelOptions) ?>
-                    </div>
-
-                    <div class="mb-3">
-                        <?= $form->field($model, 'password', [
-                            'options' => ['class' => 'mb-0'],
-                            'template' => sprintf($htmlIcon, '&#128274;'),
-                            'inputOptions' => [
-                                'class' => 'form-control',
-                                'placeholder' => 'Password',
-                            ],
-                        ])->passwordInput()->label('Your Password', $labelOptions) ?>
-                    </div>
-
-                    <div class="mb-4">
-                        <?= $form->field($model, 'rememberMe')->checkbox() ?>
-                    </div>
-
-                    <div class="d-grid">
-                        <?= Html::submitButton(
-                            'Login',
-                            [
-                                'class' => 'btn login-btn btn-lg rounded-3 text-white',
-                                'name' => 'login-button',
-                            ],
-                        ) ?>
-                    </div>
-
-                    <?php ActiveForm::end(); ?>
-
-                    <div class="text-body-secondary text-center mt-3 small">
-                        You may login with <strong>admin/admin</strong> or <strong>demo/demo</strong>.<br>
-                        To modify the username/password, check <code>app\models\User::$users</code>.
-                    </div>
-
-                </div>
-            </div>
-
+    <div class="login-side">
+        <?= Html::img('@web/images/logo-unand.png', [
+            'class' => 'crest',
+            'alt' => 'Universitas Andalas',
+            'onerror' => "this.style.display='none'",
+        ]) ?>
+        <div class="icon-badge">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM5 9h14v11H5V9z"/>
+            </svg>
         </div>
+        <h2>Sistem Informasi<br>Agenda Rapat</h2>
+    </div>
+
+    <div class="login-main">
+        <div class="login-brand">
+            <?= Html::img('@web/images/logo-unand.png', [
+                'alt' => 'Universitas Andalas',
+                'onerror' => "this.style.display='none'",
+            ]) ?>
+            <span>Universitas Andalas</span>
+        </div>
+        <h1>Sistem Manajemen Agenda Rapat</h1>
+        <p class="login-sub">Sign in to manage your meetings and schedules.</p>
+        <div class="login-divider"></div>
+
+        <?php if (Yii::$app->session->hasFlash('error')): ?>
+            <div class="alert-danger"><?= Yii::$app->session->getFlash('error') ?></div>
+        <?php endif; ?>
+
+        <?php $form = ActiveForm::begin([
+            'id' => 'login-form',
+            'options' => ['class' => ''],
+            'fieldConfig' => [
+                'errorOptions' => ['class' => 'invalid-feedback'],
+            ],
+        ]); ?>
+
+        <?= $form->field($model, 'username', [
+            'options' => ['class' => ''],
+            'template' => "{label}\n{input}\n{error}",
+        ])->label('Email or Username')->textInput([
+            'autofocus' => true,
+            'placeholder' => 'Enter your email',
+            'class' => 'form-control',
+        ]) ?>
+
+        <div class="password-wrapper">
+            <label>
+                Password
+                <a href="#" class="forgot-link">Forgot password?</a>
+            </label>
+            <?= Html::activePasswordInput($model, 'password', [
+                'id' => 'password-input',
+                'placeholder' => 'Enter your password',
+                'class' => 'form-control',
+            ]) ?>
+            <button type="button" class="password-toggle" onclick="togglePassword()">👁</button>
+            <?= Html::error($model, 'password', ['class' => 'invalid-feedback']) ?>
+        </div>
+
+        <div class="form-check">
+            <?= Html::activeCheckbox($model, 'rememberMe', [
+                'label' => false,
+            ]) ?>
+            <label for="loginform-rememberme">Remember me</label>
+        </div>
+
+        <?= Html::submitButton('Login', ['class' => 'btn-login']) ?>
+
+        <?php ActiveForm::end(); ?>
+
+        <p class="login-footer">© <?= date('Y') ?> Universitas Andalas. All rights reserved.</p>
     </div>
 </div>
+
+<script>
+function togglePassword() {
+    const input = document.getElementById('password-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+</script>
