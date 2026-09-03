@@ -11,6 +11,7 @@ use yii\web\Controller;
  */
 class NotulisController extends Controller
 {
+    public $layout = 'admin';
     /**
      * Menampilkan daftar semua agenda beserta status notulennya,
      * dengan dukungan pencarian judul dan filter status notulen.

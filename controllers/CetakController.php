@@ -15,7 +15,8 @@ class CetakController extends Controller
      * Layout khusus tanpa navbar, supaya tampilan bersih untuk dicetak.
      * @var string
      */
-    public $layout = 'cetak';
+    // public $layout = 'cetak';
+    public $layout = 'admin';
 
     /**
      * Menampilkan halaman cetak dokumen agenda beserta QR Code presensi.

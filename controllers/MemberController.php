@@ -20,6 +20,7 @@ use Dompdf\Options;
  */
 class MemberController extends Controller
 {
+    public $layout = 'admin';
     /**
      * @inheritDoc
      */

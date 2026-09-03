@@ -14,6 +14,7 @@ use yii\filters\VerbFilter;
  */
 class LokasiController extends Controller
 {
+    public $layout = 'admin';
     /**
      * @inheritDoc
      */

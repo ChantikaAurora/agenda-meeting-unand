@@ -17,7 +17,7 @@ use yii\grid\GridView;
 /** @var int $totalHadir */
 /** @var int $totalTidakHadir */
 
-$this->title = 'Kelola Peserta';
+$this->title = 'Kelola Peserta & Member';
 $this->params['breadcrumbs'][] = $this->title;
 
 ?>
