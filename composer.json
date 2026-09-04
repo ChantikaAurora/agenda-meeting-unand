@@ -19,7 +19,8 @@
         "yiisoft/yii2-bootstrap5": "~2.0.2",
         "yiisoft/yii2-symfonymailer": "~2.0.3",
         "endroid/qr-code": "^5.0",
-        "dompdf/dompdf": "^3.1"
+        "dompdf/dompdf": "^3.1",
+        "phpoffice/phpspreadsheet": "^5.9"
     },
     "require-dev": {
         "codeception/c3": "^2.8",

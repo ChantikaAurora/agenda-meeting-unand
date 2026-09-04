@@ -20,7 +20,13 @@ use Dompdf\Options;
  */
 class MemberController extends Controller
 {
+    /**
+     * Gunakan layout admin agar halaman Member
+     * menggunakan tampilan dashboard yang sama
+     * dengan Kelola Agenda dan Unit & Lokasi.
+     */
     public $layout = 'admin';
+
     /**
      * @inheritDoc
      */
@@ -74,7 +80,9 @@ class MemberController extends Controller
 
 
         /*
-         * Query peserta + absensi
+         * ============================
+         * QUERY PESERTA + ABSENSI
+         * ============================
          */
         $query = (new Query())
             ->select([
@@ -236,8 +244,6 @@ class MemberController extends Controller
      * Menampilkan halaman Daftar Hadir secara terpisah.
      *
      * Fungsi ini tetap dipertahankan.
-     * Tidak digunakan ketika Daftar Hadir dibuka
-     * melalui tab Kelola Peserta.
      *
      * @return string
      */
@@ -304,6 +310,7 @@ class MemberController extends Controller
         }
 
         if ($status === 'hadir') {
+
             $query->andWhere([
                 'is not',
                 'ab.absensi_id',
@@ -311,6 +318,7 @@ class MemberController extends Controller
             ]);
 
         } elseif ($status === 'tidak_hadir') {
+
             $query->andWhere([
                 'ab.absensi_id' => null
             ]);
@@ -336,6 +344,7 @@ class MemberController extends Controller
 
         $hadirDataProvider = new ArrayDataProvider([
             'allModels' => $hadirRows,
+
             'pagination' => [
                 'pageSize' => 10
             ],
@@ -355,8 +364,7 @@ class MemberController extends Controller
 
 
     /**
-     * Generate dan download PDF Daftar Hadir Peserta,
-     * mengikuti filter yang sedang aktif (agenda, status, pencarian).
+     * Generate dan download PDF Daftar Hadir Peserta.
      *
      * @return \yii\web\Response
      */
@@ -377,17 +385,34 @@ class MemberController extends Controller
                 'ab.absensi_id',
                 'ab.waktu_scan',
             ])
+
             ->from(['am' => 'agenda_member'])
-            ->innerJoin(['m' => 'member'], 'm.member_id = am.member_id')
-            ->innerJoin(['ag' => 'agenda'], 'ag.agenda_id = am.agenda_id')
+
+            ->innerJoin(
+                ['m' => 'member'],
+                'm.member_id = am.member_id'
+            )
+
+            ->innerJoin(
+                ['ag' => 'agenda'],
+                'ag.agenda_id = am.agenda_id'
+            )
+
             ->leftJoin(
                 ['ab' => 'absensi'],
-                'ab.agenda_id = am.agenda_id AND ab.member_id = am.member_id AND ab.deleted_at IS NULL'
+                'ab.agenda_id = am.agenda_id
+                 AND ab.member_id = am.member_id
+                 AND ab.deleted_at IS NULL'
             )
-            ->where(['am.deleted_at' => null]);
+
+            ->where([
+                'am.deleted_at' => null
+            ]);
 
         if ($agendaId !== '') {
-            $query->andWhere(['am.agenda_id' => $agendaId]);
+            $query->andWhere([
+                'am.agenda_id' => $agendaId
+            ]);
         }
 
         if ($q !== '') {
@@ -399,70 +424,127 @@ class MemberController extends Controller
         }
 
         if ($status === 'hadir') {
-            $query->andWhere(['is not', 'ab.absensi_id', null]);
+
+            $query->andWhere([
+                'is not',
+                'ab.absensi_id',
+                null
+            ]);
+
         } elseif ($status === 'tidak_hadir') {
-            $query->andWhere(['ab.absensi_id' => null]);
+
+            $query->andWhere([
+                'ab.absensi_id' => null
+            ]);
         }
 
         $rows = $query
-            ->orderBy(['ag.tanggal' => SORT_DESC, 'm.nama' => SORT_ASC])
+            ->orderBy([
+                'ag.tanggal' => SORT_DESC,
+                'm.nama' => SORT_ASC
+            ])
             ->all();
 
         $agendaLabel = 'Semua Agenda';
+
         if ($agendaId !== '') {
+
             $agenda = Agenda::findOne((int) $agendaId);
+
             if ($agenda) {
                 $agendaLabel = $agenda->pembahasan ?: 'Agenda';
             }
         }
 
         $html = '<h2 style="text-align:center;">Daftar Hadir Peserta</h2>';
-        $html .= '<p style="text-align:center; color:#666; margin-bottom: 16px;">Agenda: ' . Html::encode($agendaLabel) . '</p>';
-        $html .= '<p style="text-align:center; color:#666; margin-top: 0;">Dicetak pada: ' . date('d M Y H:i') . ' WIB</p>';
-        $html .= '<table width="100%" cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse; font-size:12px;">';
-        $html .= '<thead><tr style="background:#f0f0f0;">
+
+        $html .= '<p style="text-align:center; color:#666; margin-bottom:16px;">
+                    Agenda: ' . Html::encode($agendaLabel) . '
+                  </p>';
+
+        $html .= '<p style="text-align:center; color:#666; margin-top:0;">
+                    Dicetak pada: ' . date('d M Y H:i') . ' WIB
+                  </p>';
+
+        $html .= '<table width="100%" cellpadding="6" cellspacing="0" border="1"
+                    style="border-collapse:collapse; font-size:12px;">';
+
+        $html .= '
+            <thead>
+                <tr style="background:#f0f0f0;">
                     <th>No</th>
                     <th>Nama Peserta</th>
                     <th>NIK/NIM</th>
                     <th>Unit/Bagian</th>
                     <th>Status</th>
                     <th>Waktu Scan</th>
-                  </tr></thead><tbody>';
+                </tr>
+            </thead>
+            <tbody>
+        ';
 
         if (empty($rows)) {
-            $html .= '<tr><td colspan="6" style="text-align:center; padding:12px;">Tidak ada data peserta.</td></tr>';
-        } else {
-            $no = 1;
-            foreach ($rows as $row) {
-                $hadir = $row['absensi_id'] !== null;
-                $waktu = $hadir ? date('H:i', strtotime($row['waktu_scan'])) . ' WIB' : '-';
-                $statusLabel = $hadir ? 'Hadir' : 'Tidak Hadir';
 
-                $html .= '<tr>
-                            <td>' . $no++ . '</td>
-                            <td>' . Html::encode($row['nama'] ?: '-') . '</td>
-                            <td>' . Html::encode($row['identitas_number'] ?: '-') . '</td>
-                            <td>' . Html::encode($row['instansi'] ?: '-') . '</td>
-                            <td>' . $statusLabel . '</td>
-                            <td>' . $waktu . '</td>
-                          </tr>';
+            $html .= '
+                <tr>
+                    <td colspan="6"
+                        style="text-align:center; padding:12px;">
+                        Tidak ada data peserta.
+                    </td>
+                </tr>
+            ';
+
+        } else {
+
+            $no = 1;
+
+            foreach ($rows as $row) {
+
+                $hadir = $row['absensi_id'] !== null;
+
+                $waktu = $hadir
+                    ? date('H:i', strtotime($row['waktu_scan'])) . ' WIB'
+                    : '-';
+
+                $statusLabel = $hadir
+                    ? 'Hadir'
+                    : 'Tidak Hadir';
+
+                $html .= '
+                    <tr>
+                        <td>' . $no++ . '</td>
+                        <td>' . Html::encode($row['nama'] ?: '-') . '</td>
+                        <td>' . Html::encode($row['identitas_number'] ?: '-') . '</td>
+                        <td>' . Html::encode($row['instansi'] ?: '-') . '</td>
+                        <td>' . $statusLabel . '</td>
+                        <td>' . $waktu . '</td>
+                    </tr>
+                ';
             }
         }
 
         $html .= '</tbody></table>';
 
+
         $options = new Options();
         $options->set('isRemoteEnabled', true);
 
         $dompdf = new Dompdf($options);
+
         $dompdf->loadHtml($html);
+
         $dompdf->setPaper('A4', 'portrait');
+
         $dompdf->render();
+
 
         return Yii::$app->response->sendContentAsFile(
             $dompdf->output(),
             'daftar-hadir-peserta-' . date('Y-m-d') . '.pdf',
-            ['mimeType' => 'application/pdf', 'inline' => false]
+            [
+                'mimeType' => 'application/pdf',
+                'inline' => false
+            ]
         );
     }
 
@@ -498,6 +580,7 @@ class MemberController extends Controller
                 $model->created_by = Yii::$app->user->id;
 
                 if ($model->save()) {
+
                     return $this->redirect([
                         'view',
                         'member_id' => $model->member_id
@@ -535,6 +618,7 @@ class MemberController extends Controller
             $model->updated_by = Yii::$app->user->id;
 
             if ($model->save()) {
+
                 return $this->redirect([
                     'view',
                     'member_id' => $model->member_id

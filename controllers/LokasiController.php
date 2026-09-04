@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use Yii;
 use app\models\Lokasi;
+use app\models\Unit;
 use yii\data\ActiveDataProvider;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
@@ -34,18 +35,26 @@ class LokasiController extends Controller
     }
 
     /**
-     * Lists all Lokasi models.
+     * Lists all Lokasi models, together with Unit models
+     * for the "Unit & Lokasi" tabbed page.
      *
      * @return string
      */
     public function actionIndex()
     {
-        $dataProvider = new ActiveDataProvider([
+        $unitDataProvider = new ActiveDataProvider([
+            'query' => Unit::find(),
+            'sort' => false,
+        ]);
+
+        $lokasiDataProvider = new ActiveDataProvider([
             'query' => Lokasi::find(),
+            'sort' => false,
         ]);
 
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'unitDataProvider' => $unitDataProvider,
+            'lokasiDataProvider' => $lokasiDataProvider,
         ]);
     }
 

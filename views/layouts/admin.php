@@ -21,9 +21,8 @@ $menuItems = [
     ['label' => 'Dashboard', 'controller' => 'dashboard', 'route' => ['/dashboard/index'], 'icon' => 'grid'],
     ['label' => 'Kelola Agenda', 'controller' => 'agenda', 'route' => ['/agenda/index'], 'icon' => 'calendar'],
     ['label' => 'Unit & Lokasi', 'controller' => 'lokasi', 'route' => ['/lokasi/index'], 'icon' => 'pin'],
-    ['label' => 'Peserta', 'controller' => 'member', 'route' => ['/member/index'], 'icon' => 'users'],
-    ['label' => 'Laporan', 'controller' => 'laporan', 'route' => null, 'icon' => 'chart'],
-    ['label' => 'Lampiran', 'controller' => 'lampiran', 'route' => null, 'icon' => 'paperclip'],
+    ['label' => 'Member', 'controller' => 'member', 'route' => ['/member/index'], 'icon' => 'users'],
+    ['label' => 'Laporan', 'controller' => 'laporan', 'route' => ['/laporan/index'], 'icon' => 'chart'],
 ];
 
 $icons = [
