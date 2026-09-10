@@ -29,6 +29,10 @@ class DashboardController extends Controller
 
     public function actionIndex()
     {
+        if (!Yii::$app->user->isGuest && Yii::$app->user->identity->role === 'notulen') {
+            return $this->redirect(['/notulis/dashboard']);
+        }
+
         $today = date('Y-m-d');
 
         // Bulan yang ditampilkan di mini kalender bisa digeser lewat ?month=YYYY-MM.
