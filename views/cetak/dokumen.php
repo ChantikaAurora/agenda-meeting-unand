@@ -112,11 +112,40 @@ body {
     font-size: 13px;
 }
 
+.no-print .back-button,
+.no-print .print-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.no-print .back-button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+}
+
+.no-print .back-button:hover {
+    border-color: #247b59;
+    color: #247b59;
+}
+
+.no-print .print-button {
+    border: 1px solid #1769e0;
+    background: #1769e0;
+    color: #ffffff;
+}
+
 .dokumen-wrapper {
     width: 800px;
-    min-height: 1120px;
+    min-height: 0;
     margin: 0 auto;
-    padding: 45px 55px 45px 70px;
+    padding: 38px 55px 35px 70px;
     background: #fff;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -186,6 +215,7 @@ body {
     width: 135px;
     min-width: 135px;
     font-weight: bold;
+    color: #000;
 }
 
 .detail-value {
@@ -384,8 +414,8 @@ body {
 
 
 <div class="no-print">
-    <?= Html::a('&larr; Kembali', ['/unit/index'], ['class' => 'btn btn-default']) ?>
-    <button type="button" onclick="window.print()" class="btn btn-primary">Cetak</button>
+    <?= Html::a('&larr; Kembali ke Detail Agenda', ['/agenda/view', 'id' => $model->agenda_id], ['class' => 'back-button']) ?>
+    <button type="button" onclick="window.print()" class="print-button">Cetak</button>
 </div>
 
 
@@ -420,13 +450,6 @@ body {
             <div class="detail-label">Tempat</div>
             <div class="detail-value">
                 : <?= Html::encode($model->lokasi->lokasi ?? '-') ?>
-            </div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">Nomor Surat</div>
-            <div class="detail-value">
-                : <?= Html::encode($model->nomor_surat ?? '-') ?>
             </div>
         </div>
 

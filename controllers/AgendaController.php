@@ -36,7 +36,7 @@ class AgendaController extends Controller
                     ],
                     [
                         'allow' => true,
-                        'actions' => ['create', 'update', 'delete', 'generate-qr'],
+                        'actions' => ['create', 'update', 'delete', 'generate-qr', 'preview-invitations', 'send-invitations'],
                         'matchCallback' => function () {
                             /** @var \app\models\User $identity */
                             $identity = Yii::$app->user->identity;
@@ -50,6 +50,7 @@ class AgendaController extends Controller
                 'actions' => [
                     'delete' => ['POST'],
                     'generate-qr' => ['POST'],
+                    'send-invitations' => ['POST'],
                 ],
             ],
         ]);
@@ -128,6 +129,113 @@ class AgendaController extends Controller
 
         Yii::$app->session->setFlash('success', 'QR Code berhasil dibuat ulang.');
         return $this->redirect(['view', 'id' => $model->agenda_id]);
+    }
+
+    public function actionSendInvitations($id)
+    {
+        $model = $this->findModel($id);
+        $members = $this->invitationMembers($model);
+
+        if (empty($members)) {
+            Yii::$app->session->setFlash('error', 'Belum ada peserta aktif dengan alamat email yang valid.');
+            return $this->redirect(['view', 'id' => $model->agenda_id]);
+        }
+
+        $senderEmail = Yii::$app->params['senderEmail'] ?? 'noreply@example.com';
+        $senderName = Yii::$app->params['senderName'] ?? 'Sistem Agenda Rapat';
+        $sentCount = 0;
+        $failedCount = 0;
+        $latestLampiran = $this->latestLampiran($model);
+
+        foreach ($members as $agendaMember) {
+            $member = $agendaMember->member;
+            $subject = 'Undangan Rapat: ' . $model->pembahasan;
+            $body = $this->invitationBody($model, $member->nama);
+
+            $sent = Yii::$app->mailer->compose()
+                ->setTo($member->email)
+                ->setFrom([$senderEmail => $senderName])
+                ->setSubject($subject)
+                ->setTextBody($body)
+                ->send();
+
+            if ($latestLampiran !== null) {
+                Yii::$app->db->createCommand()->insert('{{%email_log}}', [
+                    'lampiran_id' => $latestLampiran->lampiran_id,
+                    'member_id' => $member->member_id,
+                    'nama' => $member->nama,
+                    'email' => $member->email,
+                    'status' => $sent ? 'terkirim' : 'gagal',
+                    'sent_by' => Yii::$app->user->id,
+                ])->execute();
+            }
+
+            $sent ? $sentCount++ : $failedCount++;
+        }
+
+        if ($latestLampiran !== null && $sentCount > 0) {
+            $latestLampiran->email_sent_at = date('Y-m-d H:i:s');
+            $latestLampiran->email_sent_by = Yii::$app->user->id;
+            $latestLampiran->save(false);
+        }
+
+        Yii::$app->session->setFlash(
+            $failedCount === 0 ? 'success' : 'warning',
+            "Undangan berhasil diproses: {$sentCount} terkirim" . ($failedCount > 0 ? ", {$failedCount} gagal." : '.')
+        );
+        return $this->redirect(['view', 'id' => $model->agenda_id]);
+    }
+
+    public function actionPreviewInvitations($id)
+    {
+        $model = $this->findModel($id);
+        $members = $this->invitationMembers($model);
+
+        if (empty($members)) {
+            Yii::$app->session->setFlash('error', 'Belum ada peserta aktif dengan alamat email yang valid.');
+            return $this->redirect(['view', 'id' => $model->agenda_id]);
+        }
+
+        $sampleMember = $members[0]->member;
+        return $this->render('invitation-preview', [
+            'model' => $model,
+            'members' => $members,
+            'subject' => 'Undangan Rapat: ' . $model->pembahasan,
+            'body' => $this->invitationBody($model, $sampleMember->nama),
+        ]);
+    }
+
+    private function latestLampiran(Agenda $model): ?\app\models\Lampiran
+    {
+        $lampirans = array_values(array_filter($model->lampirans, static function ($lampiran) {
+            return $lampiran->deleted_at === null;
+        }));
+        return empty($lampirans) ? null : end($lampirans);
+    }
+
+    private function invitationMembers(Agenda $model): array
+    {
+        return array_values(array_filter($model->agendaMembers, static function ($agendaMember) {
+            return $agendaMember->deleted_at === null
+                && $agendaMember->member !== null
+                && $agendaMember->member->deleted_at === null
+                && $agendaMember->member->is_active
+                && filter_var($agendaMember->member->email, FILTER_VALIDATE_EMAIL);
+        }));
+    }
+
+    private function invitationBody(Agenda $model, string $memberName): string
+    {
+        $scanUrl = Url::to(['/absensi/scan', 'token' => $model->qr_code_value], true);
+
+        return "Yth. {$memberName},\n\n"
+            . "Anda diundang untuk menghadiri rapat berikut:\n"
+            . "Agenda: {$model->pembahasan}\n"
+            . 'Tanggal: ' . Yii::$app->formatter->asDate($model->tanggal, 'php:d F Y') . "\n"
+            . "Waktu: " . substr($model->waktu_mulai, 0, 5) . ' - ' . substr($model->waktu_selesai, 0, 5) . " WIB\n"
+            . "Lokasi: " . ($model->lokasi->lokasi ?? '-') . "\n\n"
+            . "Untuk melakukan presensi, buka tautan berikut:\n{$scanUrl}\n\n"
+            . "Terima kasih.";
     }
 
     private function generateAndSaveQr(Agenda $model): void
