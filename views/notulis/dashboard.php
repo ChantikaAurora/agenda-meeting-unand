@@ -31,7 +31,7 @@ $statusFor = static function ($agenda): string {
 <div class="nt-breadcrumb">Home &nbsp;›&nbsp; <span>Dashboard</span></div>
 <section class="nt-banner">
     <div>
-        <h1>Selamat Datang Notulis</h1>
+        <h1>Selamat Datang Notulis <span class="wave">👋🏻</span></h1>
         <p>Berikut adalah ringkasan agenda dan aktivitas notulen hari ini.</p>
     </div>
     <a class="nt-button" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/index'])) ?>">+ Daftar Agenda</a>
