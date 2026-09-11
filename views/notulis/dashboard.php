@@ -49,7 +49,13 @@ $statusFor = static function ($agenda): string {
 <section class="nt-card">
     <div class="nt-card-head">
         <h2>Agenda Terbaru</h2>
-        <div class="nt-filter"><a class="nt-dashboard-search" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/index'])) ?>">⌕&nbsp; Cari agenda...</a><a href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/index'])) ?>">☷&nbsp; Filter</a></div>
+        <div class="nt-filter">
+            <?= Html::beginForm(['/notulis/index'], 'get', ['class' => 'nt-dashboard-search-form']) ?>
+                <?= Html::textInput('search', '', ['class' => 'nt-dashboard-search-input', 'placeholder' => 'Cari agenda...', 'aria-label' => 'Cari agenda']) ?>
+                <?= Html::submitButton('⌕', ['class' => 'nt-dashboard-search-button', 'aria-label' => 'Cari agenda']) ?>
+            <?= Html::endForm() ?>
+            <?= Html::a('☷&nbsp; Filter', ['/notulis/index']) ?>
+        </div>
     </div>
     <div class="nt-table-wrap">
         <table class="nt-table nt-dashboard-table">
@@ -64,7 +70,15 @@ $statusFor = static function ($agenda): string {
                     <td><strong><?= Yii::$app->formatter->asDate($agenda->tanggal, 'php:d M Y') ?></strong><small><?= substr($agenda->waktu_mulai, 0, 5) ?> - <?= substr($agenda->waktu_selesai, 0, 5) ?> WIB</small></td>
                     <td><?= Html::encode($agenda->lokasi->lokasi ?? '-') ?></td>
                     <td><span class="nt-status <?= $statusInfo['class'] ?>"><?= Html::encode($status) ?></span></td>
-                    <td><?= Html::a($statusInfo['action'], ['/notulis/index'], ['class' => 'nt-action']) ?></td>
+                    <td>
+                        <?php if ($status === 'Belum Diunggah'): ?>
+                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2 6.6 9.6 8 11l3-3v8zM5 20v-2h14v2H5z"/></svg><span>Upload</span>', ['/lampiran/create', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action primary', 'title' => 'Upload Notulen', 'aria-label' => 'Upload Notulen']) ?>
+                        <?php elseif ($status === 'Draft'): ?>
+                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><span>Edit</span>', ['/lampiran/update', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action', 'title' => 'Edit Notulen', 'aria-label' => 'Edit Notulen']) ?>
+                        <?php else: ?>
+                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg><span>Lihat</span>', ['/lampiran/index', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action muted', 'title' => 'Lihat Berkas', 'aria-label' => 'Lihat Berkas']) ?>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -7,7 +7,10 @@ AppAsset::register($this);
 $this->beginPage();
 $identity = Yii::$app->user->isGuest ? null : Yii::$app->user->identity;
 $initials = $identity ? mb_strtoupper(mb_substr($identity->nama, 0, 1)) : '?';
+$currentController = Yii::$app->controller->id;
 $currentAction = Yii::$app->controller->action->id;
+$isNotulisDashboard = $currentController === 'notulis' && $currentAction === 'dashboard';
+$isNotulisAgenda = $currentController === 'notulis' && $currentAction === 'index';
 $icons = [
     'grid' => '<svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>',
     'calendar' => '<svg viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM5 9h14v11H5V9z"/></svg>',
@@ -44,7 +47,7 @@ $icons = [
         .nt-logout { color: #c0392b; cursor: pointer; }
         .nt-main { flex: 1; padding: 22px 34px 28px; min-width: 0; }
         .nt-breadcrumb { margin-bottom: 16px; color: #7b8188; font-size: 12px; }
-        .nt-breadcrumb a { color: var(--green); text-decoration: none; font-weight: 600; }
+        .nt-breadcrumb a { color: #7b8188; text-decoration: none; }
         .nt-breadcrumb span { color: var(--green); font-weight: 600; }
         .nt-banner { padding: 21px 16px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #d9dee5; border-radius: 8px; }
         .nt-banner h1 { margin: 0 0 4px; font-size: 1.7rem; font-weight: 700; }
@@ -66,12 +69,16 @@ $icons = [
         .nt-card-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
         .nt-filter { display: flex; gap: 8px; }
         .nt-filter a { padding: 7px 10px; border: 1px solid #d6dce3; border-radius: 5px; color: #626970; text-decoration: none; font-size: 11px; }
-        .nt-filter .nt-dashboard-search { min-width: 140px; background: #f8f9fa; text-align: left; }
+        .nt-dashboard-search-form { display: flex; min-width: 220px; border: 1px solid #d6dce3; border-radius: 5px; overflow: hidden; background: #f8f9fa; }
+        .nt-dashboard-search-input { width: 185px; min-width: 0; padding: 7px 9px; border: 0; outline: 0; background: transparent; color: #4e5358; font: inherit; font-size: 11px; }
+        .nt-dashboard-search-input::placeholder { color: #626970; }
+        .nt-dashboard-search-button { width: 32px; border: 0; border-left: 1px solid #d6dce3; background: transparent; color: #2865d8; cursor: pointer; font-size: 15px; }
         .nt-table-wrap { overflow-x: auto; }
         .nt-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .nt-table th { padding: 8px 10px; background: #f8f9fa; color: #70767d; font-size: 0.7rem; text-align: left; text-transform: uppercase; letter-spacing: 0.03em; }
         .nt-table td { padding: 12px 10px; border-top: 1px solid #f0f1f3; vertical-align: middle; }
         .nt-dashboard-table th { text-align: center; }
+        .nt-dashboard-table th:last-child, .nt-dashboard-table td:last-child { width: 112px; text-align: center; white-space: nowrap; }
         .nt-table strong { display: block; margin-bottom: 3px; font-size: 0.85rem; font-weight: 500; }
         .nt-table small { color: #777d84; font-size: 0.75rem; }
         .nt-status { display: inline-block; padding: 5px 9px; border-radius: 15px; font-size: 10px; font-weight: 600; white-space: nowrap; }
@@ -79,7 +86,10 @@ $icons = [
         .nt-status.gray { color: #606872; background: #eef0f2; }
         .nt-status.green { color: #21703d; background: #ddf5e5; }
         .nt-status.blue { color: #2059b2; background: #e4edff; }
-        .nt-action { color: #2865d8; text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .nt-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 76px; padding: 7px 9px; border: 1px solid #d7dce2; border-radius: 6px; color: #2865d8; text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .nt-action svg { width: 14px; height: 14px; fill: currentColor; }
+        .nt-action.primary { border-color: #2865d8; background: #2865d8; color: #fff; }
+        .nt-action.muted { color: #646b73; }
         .nt-empty { padding: 30px; color: #8b9299; text-align: center; }
         .nt-page-title { margin: 0 0 5px; font-size: 1.7rem; font-weight: 700; }
         .nt-page-description { margin: 0 0 18px; color: var(--muted); font-size: 0.9rem; }
@@ -128,8 +138,8 @@ $icons = [
 <div class="nt-shell">
     <aside class="nt-sidebar">
         <ul class="nt-menu">
-            <li><a class="<?= $currentAction === 'dashboard' ? 'active' : '' ?>" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/dashboard'])) ?>"><?= $icons['grid'] ?><span>Dashboard</span></a></li>
-            <li><a class="<?= $currentAction === 'index' ? 'active' : '' ?>" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/index'])) ?>"><?= $icons['calendar'] ?><span>Kelola Agenda</span></a></li>
+            <li><a class="<?= $isNotulisDashboard ? 'active' : '' ?>" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/dashboard'])) ?>"><?= $icons['grid'] ?><span>Dashboard</span></a></li>
+            <li><a class="<?= $isNotulisAgenda ? 'active' : '' ?>" href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/index'])) ?>"><?= $icons['calendar'] ?><span>Daftar Agenda</span></a></li>
         </ul>
         <div class="nt-menu-bottom">
             <a href="#" onclick="return false;"><span>?</span><span>Bantuan</span></a>

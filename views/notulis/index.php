@@ -37,7 +37,7 @@ function statusNotulenBadge(Agenda $model)
 ?>
 <div class="nt-breadcrumb">
     <a href="<?= Html::encode(Yii::$app->urlManager->createUrl(['/notulis/dashboard'])) ?>">Dashboard</a>
-    &nbsp;›&nbsp; <span>Kelola Agenda</span>
+    &nbsp;›&nbsp; <span>Daftar Agenda</span>
 </div>
 <h1 class="nt-page-title">Daftar Agenda Rapat</h1>
 <p class="nt-page-description">Kelola status dokumentasi dan notulensi seluruh agenda rapat universitas.</p>
@@ -55,7 +55,6 @@ function statusNotulenBadge(Agenda $model)
             'Belum Diunggah' => 'Belum Diunggah',
             'Draft' => 'Draft',
             'Selesai Diunggah' => 'Selesai Diunggah',
-            'Email Terkirim' => 'Email Terkirim',
         ], [
             'class' => 'nt-filter-select',
             'onchange' => 'this.form.submit()',
