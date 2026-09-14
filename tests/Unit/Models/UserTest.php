@@ -48,4 +48,14 @@ final class UserTest extends \Codeception\Test\Unit
         verify($user->validateAuthKey('test100key'))->notEmpty();
         verify($user->validateAuthKey('test102key'))->empty();
     }
+
+    public function testNotulenCanManageAgenda()
+    {
+        /** @var User $user */
+        $user = User::findByUsername('notulen1');
+
+        verify($user)->notEmpty();
+        verify($user->can('manageAgenda'))->true();
+        verify($user->can('viewAgenda'))->true();
+    }
 }

@@ -91,6 +91,7 @@ class User extends ActiveRecord implements IdentityInterface
             'viewAgenda',
         ],
         'notulen' => [
+            'manageAgenda',
             'manageLampiran',
             'viewAgenda',
         ],
