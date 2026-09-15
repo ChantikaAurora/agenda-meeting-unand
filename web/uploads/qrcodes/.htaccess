@@ -1,0 +1,14 @@
+# Folder ini cuma menyimpan gambar QR (.png) hasil generate sistem, bukan upload bebas dari user.
+# Tapi tetap diproteksi sebagai defense-in-depth, sesuai poin keamanan di dokumen desain proyek:
+# "jangan simpan file di folder yang bisa dieksekusi PHP".
+
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>

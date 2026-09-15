@@ -7,23 +7,8 @@ use yii\helpers\Html;
 
 $this->title = 'Cetak Dokumen Agenda';
 
-
-/* =========================================================
-   QR CODE
-   ========================================================= */
-
-$qrValue = !empty($model->qr_code_value)
-    ? $model->qr_code_value
-    : $model->agenda_id;
-
-$qrImageUrl =
-    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='
-    . urlencode($qrValue);
-
-
-/* =========================================================
-   HARI INDONESIA
-   ========================================================= */
+$qrValue = $model->qr_code_value;
+$qrImageUrl = Yii::getAlias('@web/' . $model->qr_code_path);
 
 $hariIndo = [
     'Sunday'    => 'Minggu',
@@ -34,11 +19,6 @@ $hariIndo = [
     'Friday'    => 'Jumat',
     'Saturday'  => 'Sabtu',
 ];
-
-
-/* =========================================================
-   BULAN INDONESIA
-   ========================================================= */
 
 $bulanIndo = [
     'January'   => 'Januari',
@@ -55,11 +35,6 @@ $bulanIndo = [
     'December'  => 'Desember',
 ];
 
-
-/* =========================================================
-   FORMAT TANGGAL
-   ========================================================= */
-
 $tanggal = strtotime($model->tanggal);
 
 $namaHari = $hariIndo[date('l', $tanggal)];
@@ -68,11 +43,6 @@ $namaBulan = $bulanIndo[date('F', $tanggal)];
 $tahun = date('Y', $tanggal);
 
 $tanggalFormatted = $namaHari . ', ' . $tanggalAngka . ' ' . $namaBulan . ' ' . $tahun;
-
-
-/* =========================================================
-   FORMAT WAKTU
-   ========================================================= */
 
 $waktuMulai = date('H:i', strtotime($model->waktu_mulai));
 $waktuSelesai = date('H:i', strtotime($model->waktu_selesai));
@@ -384,7 +354,7 @@ body {
 
 
 <div class="no-print">
-    <?= Html::a('&larr; Kembali', ['/unit/index'], ['class' => 'btn btn-default']) ?>
+    <?= Html::a('&larr; Kembali', ['/agenda/view', 'id' => $model->agenda_id], ['class' => 'btn btn-default']) ?>
     <button type="button" onclick="window.print()" class="btn btn-primary">Cetak</button>
 </div>
 

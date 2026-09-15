@@ -15,6 +15,8 @@ use yii\filters\VerbFilter;
  */
 class UnitController extends Controller
 {
+    public $layout = 'admin';
+
     /**
      * @inheritDoc
      */
@@ -42,10 +44,12 @@ class UnitController extends Controller
     {
         $dataProvider = new ActiveDataProvider([
             'query' => Unit::find(),
+            'sort' => false,
         ]);
 
         $lokasiDataProvider = new ActiveDataProvider([
             'query' => Lokasi::find(),
+            'sort' => false,
         ]);
 
         return $this->render('index', [
