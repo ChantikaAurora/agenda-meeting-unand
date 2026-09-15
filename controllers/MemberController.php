@@ -58,7 +58,7 @@ class MemberController extends Controller
          * ============================
          */
         $dataProvider = new ActiveDataProvider([
-            'query' => Member::find(),
+            'query' => Member::find()->where(['deleted_at' => null]),
         ]);
 
 
@@ -641,7 +641,11 @@ class MemberController extends Controller
      */
     public function actionDelete($member_id)
     {
-        $this->findModel($member_id)->delete();
+        $model = $this->findModel($member_id);
+        $model->deleted_at = date('Y-m-d H:i:s');
+        $model->is_active = 0;
+        $model->updated_by = Yii::$app->user->id;
+        $model->save(false, ['deleted_at', 'is_active', 'updated_by', 'updated_at']);
 
         return $this->redirect([
             'index'

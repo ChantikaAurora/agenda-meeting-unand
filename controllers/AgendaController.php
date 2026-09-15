@@ -69,9 +69,16 @@ class AgendaController extends Controller
 
     public function actionView($id)
     {
-        return $this->render('view', [
-            'model' => $this->findModel($id),
-        ]);
+        $model = $this->findModel($id);
+        $qrFile = !empty($model->qr_code_path)
+            ? Yii::getAlias('@webroot/' . $model->qr_code_path)
+            : null;
+
+        if ($qrFile === null || !is_file($qrFile)) {
+            $this->generateAndSaveQr($model);
+        }
+
+        return $this->render('view', ['model' => $model]);
     }
 
     public function actionCreate()

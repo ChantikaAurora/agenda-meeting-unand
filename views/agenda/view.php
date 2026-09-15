@@ -53,7 +53,8 @@ foreach ($attendees as $attendee) {
     }
 }
 $lampirans = array_values(array_filter($model->lampirans, static function ($lampiran) {
-    return $lampiran->deleted_at === null;
+    return $lampiran->deleted_at === null
+        && is_file(Yii::getAlias('@webroot/' . $lampiran->file_path));
 }));
 $invitedCount = count($members);
 $confirmedCount = count($attendeeMemberIds);
