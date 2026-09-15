@@ -283,7 +283,7 @@ $this->registerCss(<<<CSS
 
 .lokasi-header-content p {
     margin: 0;
-    font-size: 13px;
+   font-size: 0.9rem;
     line-height: 1.5;
     color: #6b7280;
 }
@@ -311,7 +311,7 @@ $this->registerCss(<<<CSS
     border: none;
     border-bottom: 2px solid transparent;
     padding: 10px 16px;
-    font-size: 13px;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #6b7280;
     cursor: pointer;
@@ -345,22 +345,12 @@ $this->registerCss(<<<CSS
    BUTTON TAMBAH
    ===================================================== */
 
-.btn-tambah-lokasi {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 38px;
-    padding: 0 17px;
-    border-radius: 7px;
-    background: #185c37;
-    border: 1px solid #185c37;
-    color: #ffffff !important;
-    font-size: 12px;
-    font-weight: 600;
-    text-decoration: none !important;
-    transition: all .2s ease;
-}
 
+.btn-tambah-lokasi {
+            background: var(--sirat-green); color: #fff; padding: 10px 18px;
+            border-radius: 8px; text-decoration: none; font-size: 0.85rem;
+            font-weight: 600; white-space: nowrap; border: none; cursor: pointer;
+        }
 .btn-tambah-lokasi:hover {
     background: #12482b;
     border-color: #12482b;
@@ -372,42 +362,22 @@ $this->registerCss(<<<CSS
    TABLE
    ===================================================== */
 
-.lokasi-table {
-    width: 100% !important;
-    margin: 0 !important;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: #ffffff;
-}
-
+.lokasi-table {  width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0 !important; background: #ffffff; }
 .lokasi-table thead th {
-    background: #f7f8f9;
-    border-top: none !important;
-    border-bottom: 1px solid #e5e7eb !important;
-    padding: 11px 10px !important;
-    font-size: 9px;
-    font-weight: 700;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: .2px;
-}
-
+            text-align: left; padding: 8px 10px; background: #f7f8f9;
+            color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em;
+            border-bottom: 1px solid #eee;
+        }
 .lokasi-table tbody td {
     background: #ffffff;
     border-top: none !important;
     border-bottom: 1px solid #eeeeee !important;
-    padding: 14px 10px !important;
-    font-size: 12px;
+    padding: 12px 10px !important;
+    font-size: 0.9rem;;
     color: #111827;
 }
 
-.lokasi-table tbody tr:last-child td {
-    border-bottom: none !important;
-}
-
-.lokasi-table tbody tr:hover td {
-    background: #fafcfb;
-}
+.lokasi-table tbody tr:hover td { background: #fafcfb; }
 
 .lokasi-actions {
     text-align: center !important;

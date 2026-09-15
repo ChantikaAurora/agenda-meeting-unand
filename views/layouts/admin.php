@@ -16,12 +16,11 @@ $initials = $identity ? mb_strtoupper(mb_substr($identity->nama, 0, 1)) : '?';
 
 $currentController = Yii::$app->controller->id;
 
-
 $menuItems = [
     ['label' => 'Dashboard', 'controller' => 'dashboard', 'route' => ['/dashboard/index'], 'icon' => 'grid'],
     ['label' => 'Kelola Agenda', 'controller' => 'agenda', 'route' => ['/agenda/index'], 'icon' => 'calendar'],
-    ['label' => 'Unit & Lokasi', 'controller' => 'lokasi', 'route' => ['/lokasi/index'], 'icon' => 'pin'],
-    ['label' => 'Member', 'controller' => 'member', 'route' => ['/member/index'], 'icon' => 'users'],
+    ['label' => 'Unit & Lokasi', 'controller' => ['lokasi', 'unit'], 'route' => ['/lokasi/index'], 'icon' => 'pin'],
+    ['label' => 'Narasumber', 'controller' => 'member', 'route' => ['/member/index'], 'icon' => 'users'],
     ['label' => 'Laporan', 'controller' => 'laporan', 'route' => ['/laporan/index'], 'icon' => 'chart'],
 ];
 
@@ -169,9 +168,9 @@ $icons = [
         .card { background: #fff; border-radius: 12px; padding: 20px; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .card-header h2 { margin: 0; font-size: 1.05rem; font-weight: 700;}
-        .card-header a { color: var(--sirat-green); font-size: 0.82rem; text-decoration: none; font-weight: 600; }
+        .card-header a { color: var(--sirat-green); font-size: 0.9rem; text-decoration: none; font-weight: 600; }
 
-        .table-clean { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .table-clean { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         .table-clean thead th {
             text-align: left; padding: 8px 10px; background: #f7f8f9;
             color: #888; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em;
@@ -268,6 +267,7 @@ $icons = [
         }
         textarea.form-control { resize: vertical; }
         .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .form-error { color: #c0392b; font-size: 0.78rem; margin-top: 4px; }
         .form-actions { display: flex; gap: 10px; margin-top: 8px; }
         .btn-secondary-sm {
@@ -276,6 +276,7 @@ $icons = [
         }
         @media (max-width: 700px) {
             .form-row-3 { grid-template-columns: 1fr; }
+            .form-row-2 { grid-template-columns: 1fr; }
         }
 
         /* ===== Detail (Lihat Agenda) ===== */
@@ -324,11 +325,15 @@ $icons = [
         <ul class="sidebar-menu">
             <?php foreach ($menuItems as $item): ?>
                 <li>
+                    <?php
+                    $controllers = (array) $item['controller'];
+                    $isActive = in_array($currentController, $controllers, true);
+                    ?>
                     <?php if ($item['route'] !== null): ?>
                         <?= Html::a(
                             $icons[$item['icon']] . '<span>' . Html::encode($item['label']) . '</span>',
                             $item['route'],
-                            ['class' => 'active-check' . ($currentController === $item['controller'] ? ' active' : '')]
+                            ['class' => 'active-check' . ($isActive ? ' active' : '')]
                         ) ?>
                     <?php else: ?>
                         <a href="#" class="disabled" onclick="return false;">
@@ -338,7 +343,7 @@ $icons = [
                         </a>
                     <?php endif; ?>
                 </li>
-            <?php endforeach; ?>
+<?php endforeach; ?>
         </ul>
 
         <div class="sidebar-footer">

@@ -391,7 +391,7 @@ $this->registerCss(<<<CSS
 
     margin: 0 0 5px 0;
 
-    font-size: 22px;
+    font-size: 26px;
 
     font-weight: 700;
 
@@ -400,15 +400,7 @@ $this->registerCss(<<<CSS
 }
 
 
-.lokasi-view-header-content p {
-
-    margin: 0;
-
-    font-size: 13px;
-
-    color: #6b7280;
-
-}
+.lokasi-view-header-content p { margin: 0; font-size: 0.9rem; color: #6b7280;}
 
 
 .lokasi-view-header-action {
@@ -475,7 +467,7 @@ $this->registerCss(<<<CSS
 
 .lokasi-detail-label {
 
-    font-size: 10px;
+    font-size: 0.7rem;
 
     font-weight: 700;
 
@@ -492,7 +484,7 @@ $this->registerCss(<<<CSS
 
 .lokasi-detail-value {
 
-    font-size: 13px;
+    font-size: 0.9rem;
 
     font-weight: 500;
 
@@ -559,7 +551,7 @@ $this->registerCss(<<<CSS
 
     border-radius: 7px;
 
-    font-size: 12px;
+    font-size: 0.9rem;
 
     font-weight: 600;
 

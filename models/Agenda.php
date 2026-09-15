@@ -80,7 +80,7 @@ class Agenda extends \yii\db\ActiveRecord
         return [
             [['nomor_surat', 'deskripsi', 'qr_code_value', 'qr_code_path', 'created_by', 'updated_by', 'updated_at', 'deleted_at'], 'default', 'value' => null],
             [['pembahasan', 'tanggal', 'tahun_akademik', 'waktu_mulai', 'waktu_selesai', 'lokasi_id', 'status'], 'required'],
-            [['deskripsi'], 'string'],
+            [['deskripsi'], 'string', 'max' => 500],
             [['tanggal'], 'date', 'format' => 'php:Y-m-d'],
             [['waktu_mulai', 'waktu_selesai'], 'time', 'format' => 'php:H:i'],
             [['created_at', 'updated_at', 'deleted_at'], 'safe'],
