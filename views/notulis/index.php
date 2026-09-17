@@ -14,18 +14,27 @@ $this->title = 'Daftar Agenda Rapat';
 $this->params['breadcrumbs'][] = 'Notulen';
 $this->params['breadcrumbs'][] = $this->title;
 
+function latestAvailableLampiran(Agenda $model)
+{
+    $lampirans = array_values(array_filter($model->lampirans, static function ($lampiran) {
+        return $lampiran->deleted_at === null
+            && !empty($lampiran->file_path)
+            && is_file(Yii::getAlias('@webroot/' . ltrim($lampiran->file_path, '/')));
+    }));
+
+    usort($lampirans, static function ($first, $second) {
+        return $second->lampiran_id <=> $first->lampiran_id;
+    });
+
+    return $lampirans[0] ?? null;
+}
+
 function statusNotulenBadge(Agenda $model)
 {
-    $lampirans = $model->lampirans;
+    $lampiranTerbaru = latestAvailableLampiran($model);
 
-    if (empty($lampirans)) {
+    if ($lampiranTerbaru === null) {
         return ['label' => 'Belum Diunggah', 'color' => '#fee2e2', 'text' => '#991b1b'];
-    }
-
-    $lampiranTerbaru = end($lampirans);
-
-    if ($lampiranTerbaru->status === 'draft') {
-        return ['label' => 'Draft', 'color' => '#f1f5f9', 'text' => '#475569'];
     }
 
     if (!empty($lampiranTerbaru->email_sent_at)) {
@@ -80,6 +89,8 @@ function statusNotulenBadge(Agenda $model)
                 <?php foreach ($models as $index => $model):
                     $badge = statusNotulenBadge($model);
                     $statusClass = $badge['label'] === 'Belum Diunggah' ? 'red' : ($badge['label'] === 'Draft' ? 'gray' : ($badge['label'] === 'Email Terkirim' ? 'blue' : 'green'));
+                    $lampiran = latestAvailableLampiran($model);
+                    $hasFile = $lampiran !== null;
                     $number = $dataProvider->pagination->offset + $index + 1;
                 ?>
                     <tr>
@@ -93,8 +104,15 @@ function statusNotulenBadge(Agenda $model)
                                 <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2l-5.4 5.4L8 11l3-3v8zM5 20v-2h14v2H5z"/></svg>Upload Notulen', ['/lampiran/create', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button primary']) ?>
                             <?php elseif ($badge['label'] === 'Draft'): ?>
                                 <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button']) ?>
+                                <?php if ($hasFile): ?>
+                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button muted']) ?>
+                                <?php endif; ?>
                             <?php else: ?>
-                                <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button muted']) ?>
+                                <?php if ($hasFile): ?>
+                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button muted']) ?>
+                                <?php else: ?>
+                                    <?= Html::a('Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button']) ?>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>

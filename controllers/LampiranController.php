@@ -9,6 +9,7 @@ use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 use yii\web\UploadedFile;
 
 class LampiranController extends Controller
@@ -20,7 +21,7 @@ class LampiranController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['create', 'update'],
+                'only' => ['create', 'update', 'delete'],
                 'rules' => [
                     [
                         'allow' => true,
@@ -62,6 +63,8 @@ class LampiranController extends Controller
                     $model->addError('file_path', 'File notulen gagal disimpan.');
                 } else {
                     $model->file_path = $relativePath;
+                    $model->original_name = $this->getOriginalFilename($file);
+                    $model->status = Lampiran::STATUS_FINAL;
                     $model->uploaded_by = (int) Yii::$app->user->id;
                     $model->created_by = (int) Yii::$app->user->id;
 
@@ -107,6 +110,8 @@ class LampiranController extends Controller
 
                     if ($file->saveAs($directory . DIRECTORY_SEPARATOR . $filename)) {
                         $model->file_path = 'uploads/notulen/' . $filename;
+                        $model->original_name = $this->getOriginalFilename($file);
+                        $model->status = Lampiran::STATUS_FINAL;
                         if (is_file($oldPath)) {
                             @unlink($oldPath);
                         }
@@ -128,6 +133,87 @@ class LampiranController extends Controller
         ]);
     }
 
+    public function actionIndex($agenda_id)
+    {
+        $agenda = $this->findAgenda($agenda_id);
+        $model = $this->findLampiran($agenda->agenda_id);
+        $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
+
+        return $this->render('index', [
+            'agenda' => $agenda,
+            'model' => $model,
+            'fileUrl' => Yii::getAlias('@web/' . ltrim($model->file_path, '/')),
+            'fileExists' => is_file($filePath),
+        ]);
+    }
+
+    public function actionPreview($agenda_id)
+    {
+        $agenda = $this->findAgenda($agenda_id);
+        $model = $this->findLampiran($agenda->agenda_id);
+        $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
+        $extension = strtolower(pathinfo($model->file_path, PATHINFO_EXTENSION));
+
+        if (!is_file($filePath)) {
+            throw new NotFoundHttpException('File notulen tidak ditemukan di server.');
+        }
+
+        $previewHtml = $extension === 'docx' ? $this->buildDocxPreview($filePath) : null;
+
+        return $this->render('preview', [
+            'agenda' => $agenda,
+            'model' => $model,
+            'fileUrl' => Yii::getAlias('@web/' . ltrim($model->file_path, '/')),
+            'extension' => $extension,
+            'previewHtml' => $previewHtml,
+        ]);
+    }
+
+    public function actionDocument($agenda_id)
+    {
+        $agenda = $this->findAgenda($agenda_id);
+        $model = $this->findLampiran($agenda->agenda_id);
+        $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
+        $extension = strtolower(pathinfo($model->file_path, PATHINFO_EXTENSION));
+
+        if (!is_file($filePath)) {
+            throw new NotFoundHttpException('File notulen tidak ditemukan di server.');
+        }
+
+        if ($extension !== 'pdf') {
+            return $this->redirect(['download', 'agenda_id' => $agenda->agenda_id]);
+        }
+
+        return $this->render('document', [
+            'agenda' => $agenda,
+            'model' => $model,
+            'fileUrl' => Yii::$app->request->baseUrl . '/' . ltrim($model->file_path, '/'),
+        ]);
+    }
+
+    public function actionDownload($agenda_id): Response
+    {
+        $model = $this->findLampiran($agenda_id);
+        $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
+
+        if (!is_file($filePath)) {
+            throw new NotFoundHttpException('File notulen tidak ditemukan di server.');
+        }
+
+        return Yii::$app->response->sendFile($filePath, $model->original_name ?: basename($filePath));
+    }
+
+    public function actionDelete($agenda_id)
+    {
+        $model = $this->findLampiran($agenda_id);
+        $model->deleted_at = date('Y-m-d H:i:s');
+        $model->updated_by = (int) Yii::$app->user->id;
+        $model->save(false, ['deleted_at', 'updated_by']);
+
+        Yii::$app->session->setFlash('success', 'Notulen berhasil dihapus.');
+        return $this->redirect(['/notulis/index']);
+    }
+
     private function findAgenda($id): Agenda
     {
         $agenda = Agenda::findOne(['agenda_id' => $id, 'deleted_at' => null]);
@@ -135,6 +221,61 @@ class LampiranController extends Controller
             throw new NotFoundHttpException('Agenda yang diminta tidak ditemukan.');
         }
         return $agenda;
+    }
+
+    private function findLampiran($agendaId): Lampiran
+    {
+        $model = Lampiran::find()
+            ->andWhere(['agenda_id' => $agendaId, 'deleted_at' => null])
+            ->orderBy(['lampiran_id' => SORT_DESC])
+            ->one();
+
+        if ($model === null) {
+            throw new NotFoundHttpException('Notulen untuk agenda ini belum tersedia.');
+        }
+
+        return $model;
+    }
+
+    private function getOriginalFilename(UploadedFile $file): string
+    {
+        $filename = basename($file->name);
+        $filename = preg_replace('/[^A-Za-z0-9._ -]/', '_', $filename);
+
+        return trim($filename) !== '' ? trim($filename) : 'notulen.' . strtolower($file->extension);
+    }
+
+    private function buildDocxPreview(string $filePath): ?string
+    {
+        $archive = new \ZipArchive();
+        if ($archive->open($filePath) !== true) {
+            return null;
+        }
+
+        $documentXml = $archive->getFromName('word/document.xml');
+        $archive->close();
+        if ($documentXml === false) {
+            return null;
+        }
+
+        $xml = new \DOMDocument();
+        $xml->preserveWhiteSpace = false;
+        if (!$xml->loadXML($documentXml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+            return null;
+        }
+
+        $xpath = new \DOMXPath($xml);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $paragraphs = [];
+        foreach ($xpath->query('//w:body/w:p') as $paragraph) {
+            $text = '';
+            foreach ($xpath->query('.//w:t', $paragraph) as $textNode) {
+                $text .= $textNode->textContent;
+            }
+            $paragraphs[] = '<p>' . nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8')) . '</p>';
+        }
+
+        return $paragraphs === [] ? null : implode('', $paragraphs);
     }
 
     private function validateUpload(UploadedFile $file): ?string
