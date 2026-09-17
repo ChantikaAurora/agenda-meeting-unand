@@ -349,3 +349,93 @@ body.bg-public {
     .public-card { padding: 1.1rem 1rem; }
     .page-title { font-size: 1.5rem; }
 }
+
+/* ==========================================================================
+   Halaman status (success.php & error.php)
+   ========================================================================== */
+
+.status-card {
+    text-align: center;
+    padding: 2rem 1.5rem;
+}
+
+.status-icon-wrap {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-icon-wrap svg {
+    width: 34px;
+    height: 34px;
+}
+
+.status-icon-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-icon-error {
+    background: #fee2e2;
+    color: var(--pub-danger);
+}
+
+.status-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+}
+
+.status-message {
+    color: var(--pub-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0 0 1.25rem;
+}
+
+.status-message strong {
+    color: var(--pub-text);
+}
+
+.status-details {
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid var(--pub-border);
+    border-radius: 0.625rem;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.status-detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--pub-border);
+}
+
+.status-detail-row:last-child { border-bottom: 0; }
+
+.status-detail-label {
+    font-size: 0.82rem;
+    color: var(--pub-muted);
+    flex-shrink: 0;
+}
+
+.status-detail-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--pub-text);
+    text-align: right;
+}
+
+.status-footnote {
+    font-size: 0.82rem;
+    color: var(--pub-muted);
+    margin: 0;
+}

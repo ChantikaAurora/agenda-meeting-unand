@@ -2,6 +2,8 @@
 
 /** @var yii\web\View $this */
 /** @var app\models\Agenda $model */
+/** @var array $hadirRows */
+/** @var array $ringkasanHadir */
 
 use yii\helpers\Html;
 
@@ -39,10 +41,6 @@ $unitName = $model->lokasi->unit->nama_unit ?? '-';
 
 ?>
 
-<!-- ==========================================
-     BREADCRUMB
-     ========================================== -->
-
 <div class="breadcrumb">
 
     <a href="<?= Yii::$app->homeUrl ?>">
@@ -63,11 +61,6 @@ $unitName = $model->lokasi->unit->nama_unit ?? '-';
     </span>
 
 </div>
-
-
-<!-- ==========================================
-     HEADER AGENDA
-     ========================================== -->
 
 <div class="agenda-view-header">
 
@@ -135,16 +128,7 @@ $unitName = $model->lokasi->unit->nama_unit ?? '-';
 </div>
 
 
-<!-- ==========================================
-     CONTENT
-     ========================================== -->
-
 <div class="agenda-view-layout">
-
-
-    <!-- ======================================
-         DETAIL AGENDA
-         ====================================== -->
 
     <div class="agenda-card">
 
@@ -293,6 +277,132 @@ $unitName = $model->lokasi->unit->nama_unit ?? '-';
 
     </div>
 
+    <!-- ======================================
+         DAFTAR HADIR
+         ====================================== -->
+
+    <div class="agenda-card hadir-card">
+
+        <div class="agenda-card-header">
+
+            <h2>
+                Daftar Hadir
+            </h2>
+
+            <?= Html::a(
+                'Lihat Selengkapnya',
+                [
+                    '/member/daftar-hadir',
+                    'agenda_id' => $model->agenda_id,
+                ]
+            ) ?>
+
+        </div>
+
+
+        <div class="hadir-summary">
+
+            <div class="hadir-summary-item">
+                <span class="hadir-summary-value"><?= $ringkasanHadir['hadir'] ?></span>
+                <span class="hadir-summary-label">Hadir</span>
+            </div>
+
+            <div class="hadir-summary-item">
+                <span class="hadir-summary-value"><?= $ringkasanHadir['tidak_hadir'] ?></span>
+                <span class="hadir-summary-label">Belum Hadir</span>
+            </div>
+
+            <?php if ($ringkasanHadir['walk_in'] > 0): ?>
+                <div class="hadir-summary-item">
+                    <span class="hadir-summary-value"><?= $ringkasanHadir['walk_in'] ?></span>
+                    <span class="hadir-summary-label">Tanpa Undangan</span>
+                </div>
+            <?php endif; ?>
+
+        </div>
+
+
+        <?php if (empty($hadirRows)): ?>
+
+            <p class="empty-text" style="margin-top:12px;">
+                Belum ada peserta yang diundang atau melakukan absensi
+                untuk agenda ini.
+            </p>
+
+        <?php else: ?>
+
+            <div class="table-responsive">
+
+                <table class="table hadir-mini-table">
+
+                    <thead>
+                        <tr>
+                            <th>Nama</th>
+                            <th>Waktu Scan</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <?php
+                        // Cukup tampilkan 5 baris teratas di kartu ringkas ini;
+                        // daftar lengkap ada di link "Lihat Selengkapnya" di atas.
+                        $preview = array_slice($hadirRows, 0, 5);
+                        ?>
+
+                        <?php foreach ($preview as $row): ?>
+
+                            <?php $hadir = $row['absensi_id'] !== null; ?>
+
+                            <tr>
+                                <td>
+                                    <?= Html::encode($row['nama']) ?>
+
+                                    <?php if ($row['sumber'] === 'walk_in'): ?>
+                                        <span class="hadir-tag-walkin">Tanpa undangan</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td>
+                                    <?= $hadir
+                                        ? Html::encode(
+                                            Yii::$app->formatter->asTime($row['waktu_scan']) . ' WIB'
+                                        )
+                                        : '-'
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <?php if ($hadir): ?>
+                                        <span class="status-badge badge-hadir">&#10003; Hadir</span>
+                                    <?php else: ?>
+                                        <span class="status-badge badge-tidak">&#10005; Belum</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+
+                        <?php endforeach; ?>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <?php if (count($hadirRows) > 5): ?>
+                <p class="hadir-more-hint">
+                    dan <?= count($hadirRows) - 5 ?> peserta lainnya —
+                    <?= Html::a('lihat semua', [
+                        '/member/daftar-hadir',
+                        'agenda_id' => $model->agenda_id,
+                    ]) ?>
+                </p>
+            <?php endif; ?>
+
+        <?php endif; ?>
+
+    </div>
 
     <!-- ======================================
          QR CODE
@@ -925,7 +1035,66 @@ $this->registerCss(<<<CSS
 
 }
 
+
+/* ==========================================
+   DAFTAR HADIR (kartu ringkas)
+   ========================================== */
+
+.hadir-summary {
+    display: flex;
+    gap: 20px;
+    margin: 4px 0 14px;
+}
+
+.hadir-summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.hadir-summary-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.hadir-summary-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.hadir-mini-table th {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-align: left;
+    padding-bottom: 6px;
+}
+
+.hadir-mini-table td {
+    font-size: 13px;
+    padding: 6px 0;
+    border-top: 1px solid #f1f1f1;
+}
+
+.hadir-tag-walkin {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.hadir-more-hint {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
 CSS
 );
 
 ?>
+
+

@@ -13,6 +13,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Url;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use app\models\DaftarHadirQuery;
 
 class AgendaController extends Controller
 {
@@ -66,10 +67,17 @@ class AgendaController extends Controller
         ]);
     }
 
-    public function actionView($id)
+        public function actionView($id)
     {
+        $model = $this->findModel($id);
+
+        $hadirRows = DaftarHadirQuery::fetch(['agenda_id' => (string) $id]);
+        $ringkasanHadir = DaftarHadirQuery::summarize($hadirRows);
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $model,
+            'hadirRows' => $hadirRows,
+            'ringkasanHadir' => $ringkasanHadir,
         ]);
     }
 
