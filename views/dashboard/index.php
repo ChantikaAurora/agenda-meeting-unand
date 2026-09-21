@@ -108,7 +108,7 @@ $agendaDaySet = array_flip(array_map(
                     <tr><td colspan="5" class="table-empty">Belum ada agenda.</td></tr>
                 <?php endif; ?>
                 <?php foreach ($agendaTerbaru as $a):
-                    $status = $statusMap[$a->status] ?? ['class' => '', 'label' => Html::encode($a->status)];
+                    $status = $statusMap[$a->statusSaatIni] ?? ['class' => '', 'label' => Html::encode($a->statusSaatIni)];
                 ?>
                     <tr>
                         <td><?= Html::a(Html::encode($a->pembahasan), ['/agenda/view', 'id' => $a->agenda_id], ['class' => 'row-link']) ?></td>
