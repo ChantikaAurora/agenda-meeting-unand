@@ -13,6 +13,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Url;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use app\models\DaftarHadirQuery;
 
 class AgendaController extends Controller
 {
@@ -78,12 +79,21 @@ class AgendaController extends Controller
             $this->generateAndSaveQr($model);
         }
 
-        return $this->render('view', ['model' => $model]);
+        $hadirRows = DaftarHadirQuery::fetch(['agenda_id' => (string) $id]);
+        $ringkasanHadir = DaftarHadirQuery::summarize($hadirRows);
+
+        return $this->render('view', [
+            'model' => $model,
+            'hadirRows' => $hadirRows,
+            'ringkasanHadir' => $ringkasanHadir,
+        ]);
     }
 
     public function actionCreate()
     {
         $model = new Agenda();
+        // Batasi status yang boleh dikirim lewat form (lihat Agenda::scenarios()).
+        $model->scenario = Agenda::SCENARIO_INPUT_PENGGUNA;
 
         if (Yii::$app->request->isPost) {
             if ($model->load(Yii::$app->request->post())) {
@@ -107,6 +117,15 @@ class AgendaController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
+        $model->scenario = Agenda::SCENARIO_INPUT_PENGGUNA;
+
+        // Agenda yang sedang berjalan atau sudah selesai tidak boleh diubah
+        // jadwalnya: QR dan undangan sudah beredar, dan menggeser jam setelah
+        // rapat berjalan akan merusak validitas data absensi.
+        if (in_array($model->statusSaatIni, [Agenda::STATUS_BERLANGSUNG, Agenda::STATUS_SELESAI], true)) {
+            Yii::$app->session->setFlash('error', 'Agenda yang sedang berlangsung atau sudah selesai tidak dapat diubah.');
+            return $this->redirect(['view', 'id' => $model->agenda_id]);
+        }
 
         if (Yii::$app->request->isPost
             && $model->load(Yii::$app->request->post())

@@ -15,6 +15,7 @@ $this->title = $model->nama_unit;
     <span class="current">Detail Unit</span>
 </div>
 
+
 <div class="unit-view">
 
     <!-- ==========================================
@@ -140,14 +141,14 @@ $this->registerCss(<<<CSS
 
 .unit-view-header-content h1 {
     margin: 0 0 5px 0;
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 700;
     color: #111827;
 }
 
 .unit-view-header-content p {
     margin: 0;
-    font-size: 13px;
+    font-size: 0.9rem;
     color: #6b7280;
 }
 
@@ -184,7 +185,7 @@ $this->registerCss(<<<CSS
 }
 
 .unit-detail-label {
-    font-size: 10px;
+    font-size: 0.7rem;
     font-weight: 700;
     color: #9ca3af;
     text-transform: uppercase;
@@ -193,14 +194,14 @@ $this->registerCss(<<<CSS
 }
 
 .unit-detail-value {
-    font-size: 13px;
+    font-size: 0.9rem;
     font-weight: 500;
     color: #111827;
     line-height: 1.4;
 }
 
 .unit-detail-value .badge-status {
-    font-size: 11px;
+    font-size: 0.75rem;
 }
 
 
@@ -216,7 +217,7 @@ $this->registerCss(<<<CSS
     height: 34px;
     padding: 0 15px;
     border-radius: 7px;
-    font-size: 12px;
+    font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none !important;
     transition: all .2s ease;

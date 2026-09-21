@@ -177,8 +177,8 @@ $this->registerCss(<<<CSS
     padding: 22px 20px; margin-bottom: 16px;
     display: flex; align-items: center; justify-content: space-between;
 }
-.laporan-header-content h1 { margin: 0 0 5px; font-size: 22px; font-weight: 700; color: #111827; }
-.laporan-header-content p { margin: 0; font-size: 13px; color: #6b7280; }
+.laporan-header-content h1 { margin: 0 0 5px; font-size: 26px; font-weight: 700; color: #111827; }
+.laporan-header-content p { margin: 0; font-size: 0.9rem;  color: #6b7280; }
 .laporan-header-action { display: flex; gap: 8px; }
 
 .btn-cetak-pdf, .btn-export-excel {
@@ -186,9 +186,13 @@ $this->registerCss(<<<CSS
     height: 34px; padding: 0 15px; border-radius: 7px;
     font-size: 12px; font-weight: 600; text-decoration: none !important;
 }
-.btn-cetak-pdf { background: #185c37; border: 1px solid #185c37; color: #fff !important; }
+ .btn-cetak-pdf {
+            background: var(--sirat-green); color: #fff; padding: 10px 18px;
+            border-radius: 8px; text-decoration: none; font-size: 0.85rem;
+            font-weight: 600; white-space: nowrap; border: none; cursor: pointer;
+        }
 .btn-cetak-pdf:hover { background: #12482b; }
-.btn-export-excel { background: #fff; border: 1px solid #dfe3e8; color: #374151 !important; }
+.btn-export-excel { font-size: 0.85rem; background: #fff; border: 1px solid #dfe3e8; color: #374151 !important; }
 .btn-export-excel:hover { background: #f8f9fa; }
 
 .laporan-filter-card {

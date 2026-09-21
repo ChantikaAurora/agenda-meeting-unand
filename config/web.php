@@ -4,7 +4,7 @@ $params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
 
 $config = [
-    'defaultRoute' => 'dashboard/index',
+    'defaultRoute' => 'site/index',
     'id' => 'basic',
     'timeZone' => 'Asia/Jakarta',
     'basePath' => dirname(__DIR__),

@@ -324,7 +324,7 @@ $this->registerCss(<<<CSS
 .member-header-content p {
     margin: 0;
 
-    font-size: 13px;
+   font-size: 0.9rem;
 
     line-height: 1.5;
 
@@ -341,34 +341,10 @@ $this->registerCss(<<<CSS
 }
 
 .btn-tambah-member {
-    display: inline-flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    height: 38px;
-
-    min-width: 136px;
-
-    padding: 0 17px;
-
-    border-radius: 7px;
-
-    background: #185c37;
-
-    border: 1px solid #185c37;
-
-    color: #ffffff !important;
-
-    font-size: 12px;
-
-    font-weight: 600;
-
-    text-decoration: none !important;
-
-    transition: all .2s ease;
-}
+            background: var(--sirat-green); color: #fff; padding: 10px 18px;
+            border-radius: 8px; text-decoration: none; font-size: 0.85rem;
+            font-weight: 600; white-space: nowrap; border: none; cursor: pointer;
+        }
 
 .btn-tambah-member:hover {
     background: #12482b;

@@ -1,0 +1,23 @@
+# Folder ini menyimpan tanda tangan digital peserta (data pribadi) hasil
+# absensi. Diproteksi sama seperti folder qrcodes: mencegah eksekusi PHP
+# kalau ada file berbahaya yang berhasil ter-upload dengan nama file .png
+# palsu. Gambar .png sendiri TETAP bisa diakses langsung, karena halaman
+# Daftar Hadir (tombol "Lihat TTD") membuka file ini lewat URL langsung,
+# bukan lewat perantara controller.
+#
+# CATATAN: karena bisa diakses langsung, nama file signature dibuat
+# non-tebak-an (mengandung hash) oleh AbsensiController::saveSignatureFile().
+# Kalau butuh proteksi lebih ketat (misal wajib login admin), gambar harus
+# dipindah ke luar folder /web dan disajikan lewat action controller
+# (mis. actionSignatureImage()) yang memeriksa role sebelum mengeluarkan
+# file-nya.
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
