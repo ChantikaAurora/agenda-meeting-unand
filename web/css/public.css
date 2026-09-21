@@ -21,6 +21,14 @@ body.bg-public {
     max-width: 480px;
 }
 
+/* Untuk halaman yang butuh lebar penuh (landing publik, bukan form satu
+   kolom) -- lebar menyesuaikan layar: penuh di HP/tablet, dan berhenti
+   melebar lagi di layar besar supaya baris teks tidak jadi terlalu panjang
+   dibaca. */
+.public-container-wide {
+    max-width: 1100px;
+}
+
 
 .public-header {
     background: var(--pub-surface);

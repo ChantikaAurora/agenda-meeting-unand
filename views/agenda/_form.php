@@ -69,7 +69,7 @@ use app\models\Lokasi;
         ) ?>
     </div>
 
-    <?= $form->field($model, 'status')->dropDownList(Agenda::statusList(), ['class' => 'form-control']) ?>
+    <?= $form->field($model, 'status')->dropDownList(Agenda::statusPilihanForm(), ['class' => 'form-control'])->hint('Status berlangsung dan selesai ditentukan otomatis dari tanggal dan jam agenda.') ?>
 
     <div class="form-actions">
         <?= Html::submitButton($model->isNewRecord ? 'Simpan' : 'Perbarui', ['class' => 'btn-primary-sm']) ?>

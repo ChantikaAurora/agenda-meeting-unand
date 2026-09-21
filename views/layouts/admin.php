@@ -15,6 +15,39 @@ $roleLabel = $identity && $identity->role === 'administrasi' ? 'Administrator' :
 $initials = $identity ? mb_strtoupper(mb_substr($identity->nama, 0, 1)) : '?';
 
 $currentController = Yii::$app->controller->id;
+$currentAction = Yii::$app->controller->action->id ?? '';
+
+if ($currentController === 'member' && in_array($currentAction, ['daftar-hadir', 'export-pdf'], true)) {
+    $currentController = 'agenda';
+}
+
+// Halaman cetak/undangan adalah turunan dari modul Agenda, jadi menu sidebar
+// "Kelola Agenda" tetap disorot supaya pengguna tidak merasa tersesat.
+if ($currentController === 'cetak') {
+    $currentController = 'agenda';
+}
+
+// Jenis flash message -> label & ikon toast. Ikon berasal dari konstanta di
+// sini (bukan dari data pengguna), jadi aman dirender sebagai HTML mentah.
+$toastMeta = [
+    'success' => ['label' => 'Berhasil', 'icon' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14.5-4-4L8.4 11l2.6 2.6L15.6 9 17 10.4l-6 6.1z"/></svg>'],
+    'error'   => ['label' => 'Gagal', 'icon' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>'],
+    'warning' => ['label' => 'Perhatian', 'icon' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>'],
+    'info'    => ['label' => 'Informasi', 'icon' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'],
+];
+
+// getFlash(..., true) sekaligus menghapus flash-nya supaya toast tidak muncul
+// lagi saat halaman di-refresh. Cast ke array menampung addFlash() yang bisa
+// mengisi beberapa pesan untuk satu jenis.
+$toasts = [];
+foreach ($toastMeta as $jenis => $meta) {
+    foreach ((array) Yii::$app->session->getFlash($jenis, [], true) as $pesan) {
+        $pesan = trim((string) $pesan);
+        if ($pesan !== '') {
+            $toasts[] = ['jenis' => $jenis, 'meta' => $meta, 'pesan' => $pesan];
+        }
+    }
+}
 
 $menuItems = [
     ['label' => 'Dashboard', 'controller' => 'dashboard', 'route' => ['/dashboard/index'], 'icon' => 'grid'],
@@ -190,6 +223,18 @@ $icons = [
         .badge-selesai { background: #E3F5E7; color: #1f7a3d; }
         .badge-dibatalkan { background: #FBE4E4; color: #a12622; }
 
+        .alert-box {
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 18px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        .alert-success { background: #E3F5E7; color: #1f7a3d; border-left-color: #1f7a3d; }
+        .alert-error   { background: #FBE4E4; color: #a12622; border-left-color: #a12622; }
+        .alert-warning { background: #FFF6D9; color: #8a6d00; border-left-color: #8a6d00; }
+
         .action-icons { display: flex; gap: 8px; justify-content: center; }
         .action-icons a { color: #999; display: inline-flex; }
         .action-icons a svg { width: 15px; height: 15px; }
@@ -295,6 +340,80 @@ $icons = [
         .qr-image { width: 220px; height: 220px; border: 1px solid #eee; border-radius: 8px; padding: 12px; }
         .qr-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
         .qr-note { color: #999; font-size: 0.78rem; margin-top: 12px; }
+
+        /* ===== Toast / notifikasi pop up ===== */
+        .toast-stack {
+            position: fixed; top: 80px; right: 24px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 10px;
+            width: 340px; max-width: calc(100vw - 32px);
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            position: relative; overflow: hidden;
+            display: flex; align-items: flex-start; gap: 12px;
+            background: #fff; border-radius: 10px; padding: 14px 14px 14px 16px;
+            border-left: 4px solid #999;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateX(120%); opacity: 0;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+        }
+        .toast.is-visible { transform: translateX(0); opacity: 1; }
+        .toast.is-leaving { transform: translateX(120%); opacity: 0; }
+        .toast-icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+        .toast-body { flex: 1; min-width: 0; }
+        .toast-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
+        .toast-message { font-size: 0.82rem; color: #555; line-height: 1.45; word-wrap: break-word; }
+        .toast-close {
+            flex-shrink: 0; border: none; background: none; cursor: pointer;
+            color: #bbb; font-size: 1.1rem; line-height: 1; padding: 2px 4px; border-radius: 4px;
+        }
+        .toast-close:hover { color: #666; background: #f3f3f3; }
+        .toast-progress {
+            position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+            transform-origin: left center; opacity: 0.35;
+        }
+        .toast.is-paused .toast-progress { animation-play-state: paused; }
+        @keyframes toast-progress-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+        .toast-success { border-left-color: #1f7a3d; }
+        .toast-success .toast-icon, .toast-success .toast-title { color: #1f7a3d; }
+        .toast-success .toast-progress { background: #1f7a3d; }
+        .toast-error { border-left-color: #a12622; }
+        .toast-error .toast-icon, .toast-error .toast-title { color: #a12622; }
+        .toast-error .toast-progress { background: #a12622; }
+        .toast-warning { border-left-color: #8a6d00; }
+        .toast-warning .toast-icon, .toast-warning .toast-title { color: #8a6d00; }
+        .toast-warning .toast-progress { background: #8a6d00; }
+        .toast-info { border-left-color: #1a56b0; }
+        .toast-info .toast-icon, .toast-info .toast-title { color: #1a56b0; }
+        .toast-info .toast-progress { background: #1a56b0; }
+
+        @media (max-width: 520px) {
+            .toast-stack { top: auto; bottom: 16px; right: 16px; left: 16px; width: auto; }
+        }
+
+        /* Pengguna yang mematikan animasi di OS tetap melihat toast,
+           hanya tanpa gerakan geser. */
+        @media (prefers-reduced-motion: reduce) {
+            .toast { transition: opacity 0.2s ease; transform: none; }
+            .toast.is-visible, .toast.is-leaving { transform: none; }
+            .toast-progress { animation: none !important; }
+        }
+
+        /* ===== Aturan cetak: yang tercetak hanya isi halaman ===== */
+        @media print {
+            .topbar,
+            .sidebar,
+            .toast-stack,
+            .breadcrumb,
+            .no-print { display: none !important; }
+
+            body { background: #fff !important; }
+            .app-shell { display: block !important; min-height: 0 !important; }
+            .main-content { padding: 0 !important; }
+            .card { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+        }
     </style>
 </head>
 <body>
@@ -360,10 +479,94 @@ $icons = [
         </div>
     </div>
 
-    <div class="main-content">
+        <div class="main-content">
         <?= $content ?>
     </div>
+
 </div>
+
+<?php if ($toasts !== []): ?>
+    <div class="toast-stack" role="region" aria-label="Notifikasi">
+        <?php foreach ($toasts as $i => $toast): ?>
+            <?php
+            // Pesan error dibiarkan lebih lama karena biasanya perlu dibaca
+            // sampai selesai sebelum pengguna mencoba lagi.
+            $durasi = $toast['jenis'] === 'error' ? 8000 : 5000;
+            ?>
+            <div class="toast toast-<?= Html::encode($toast['jenis']) ?>"
+                 role="<?= $toast['jenis'] === 'error' ? 'alert' : 'status' ?>"
+                 aria-live="<?= $toast['jenis'] === 'error' ? 'assertive' : 'polite' ?>"
+                 data-durasi="<?= $durasi ?>"
+                 data-urutan="<?= (int) $i ?>">
+                <span class="toast-icon"><?= $toast['meta']['icon'] ?></span>
+                <div class="toast-body">
+                    <div class="toast-title"><?= Html::encode($toast['meta']['label']) ?></div>
+                    <?php // Html::encode wajib: isi pesan bisa memuat data dari input pengguna. ?>
+                    <div class="toast-message"><?= Html::encode($toast['pesan']) ?></div>
+                </div>
+                <button type="button" class="toast-close" aria-label="Tutup notifikasi">&times;</button>
+                <span class="toast-progress"></span>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <?php
+    // Toast dirender penuh dari sisi server (sudah ter-escape). JavaScript di
+    // sini hanya mengatur animasi dan penutupan -- tidak pernah menyisipkan
+    // teks ke DOM, sehingga tidak ada jalur XSS lewat isi pesan.
+    $this->registerJs(<<<'JS'
+(function () {
+    var daftar = document.querySelectorAll('.toast-stack .toast');
+    if (!daftar.length) {
+        return;
+    }
+
+    var tanpaAnimasi = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    daftar.forEach(function (toast) {
+        var durasi = parseInt(toast.getAttribute('data-durasi'), 10) || 5000;
+        var jeda = tanpaAnimasi ? 0 : (parseInt(toast.getAttribute('data-urutan'), 10) || 0) * 110;
+        var progress = toast.querySelector('.toast-progress');
+        var timer = null;
+
+        function tutup() {
+            if (toast.classList.contains('is-leaving')) {
+                return;
+            }
+            window.clearTimeout(timer);
+            toast.classList.remove('is-visible');
+            toast.classList.add('is-leaving');
+            window.setTimeout(function () {
+                toast.remove();
+            }, 350);
+        }
+
+        window.setTimeout(function () {
+            toast.classList.add('is-visible');
+            if (progress && !tanpaAnimasi) {
+                progress.style.animation = 'toast-progress-shrink ' + durasi + 'ms linear forwards';
+            }
+            timer = window.setTimeout(tutup, durasi);
+        }, jeda);
+
+        // Hitung mundur berhenti selama kursor menahan toast, supaya pesan
+        // panjang tidak keburu hilang saat sedang dibaca.
+        toast.addEventListener('mouseenter', function () {
+            window.clearTimeout(timer);
+            toast.classList.add('is-paused');
+        });
+
+        toast.addEventListener('mouseleave', function () {
+            toast.classList.remove('is-paused');
+            timer = window.setTimeout(tutup, 1500);
+        });
+
+        toast.querySelector('.toast-close').addEventListener('click', tutup);
+    });
+})();
+JS, \yii\web\View::POS_END);
+    ?>
+<?php endif; ?>
 
 <?php $this->endBody() ?>
 </body>

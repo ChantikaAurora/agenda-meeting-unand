@@ -105,7 +105,7 @@ $this->registerCss(<<<CSS
    ========================================== */
 
 .unit-create-card label {
-    font-size: 13px;
+    font-size: 0.9rem;
     font-weight: 500;
     color: #111827;
     margin-bottom: 7px;
@@ -122,7 +122,7 @@ $this->registerCss(<<<CSS
     border: 1px solid #d6d9dd;
     border-radius: 7px;
     min-height: 40px;
-    font-size: 13px;
+    font-size: 0.9rem;
     color: #111827;
     box-shadow: none;
 }
@@ -144,7 +144,7 @@ $this->registerCss(<<<CSS
     border-color: #185c37;
     border-radius: 7px;
     padding: 9px 18px;
-    font-size: 13px;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
@@ -159,7 +159,7 @@ $this->registerCss(<<<CSS
    ========================================== */
 
 .unit-create-card .help-block {
-    font-size: 12px;
+    font-size: 0.9rem;
     color: #dc3545;
     margin-top: 5px;
 }

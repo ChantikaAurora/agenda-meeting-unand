@@ -89,7 +89,7 @@ $iconDelete = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 
             <tr><td colspan="5" class="table-empty">Tidak ada agenda yang cocok dengan pencarian.</td></tr>
         <?php endif; ?>
         <?php foreach ($models as $a):
-            $status = $statusMap[$a->status] ?? ['class' => '', 'label' => Html::encode($a->status)];
+            $status = $statusMap[$a->statusSaatIni] ?? ['class' => '', 'label' => Html::encode($a->statusSaatIni)];
             $unitName = $a->lokasi->unit->nama_unit ?? '-';
         ?>
             <tr>
