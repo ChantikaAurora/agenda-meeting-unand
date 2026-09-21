@@ -14,6 +14,8 @@ use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use app\models\DaftarHadirQuery;
+
 
 /**
  * MemberController implements the CRUD actions for Member model.
@@ -58,7 +60,7 @@ class MemberController extends Controller
          * ============================
          */
         $dataProvider = new ActiveDataProvider([
-            'query' => Member::find(),
+            'query' => Member::find()->where(['deleted_at' => null]),
         ]);
 
 
@@ -249,8 +251,6 @@ class MemberController extends Controller
      */
     public function actionDaftarHadir()
     {
-        $this->layout = 'blank';
-
         $agendaList = Agenda::find()
             ->orderBy(['tanggal' => SORT_DESC])
             ->all();
@@ -324,12 +324,11 @@ class MemberController extends Controller
             ]);
         }
 
-        $hadirRows = $query
-            ->orderBy([
-                'ag.tanggal' => SORT_DESC,
-                'm.nama' => SORT_ASC
-            ])
-            ->all();
+        $hadirRows = DaftarHadirQuery::fetch([
+            'agenda_id' => $agendaId,
+            'status' => $status,
+            'q' => $q,
+        ]);
 
         $totalPeserta = count($hadirRows);
 
@@ -438,12 +437,11 @@ class MemberController extends Controller
             ]);
         }
 
-        $rows = $query
-            ->orderBy([
-                'ag.tanggal' => SORT_DESC,
-                'm.nama' => SORT_ASC
-            ])
-            ->all();
+        $rows = DaftarHadirQuery::fetch([
+            'agenda_id' => $agendaId,
+            'status' => $status,
+            'q' => $q,
+        ]);
 
         $agendaLabel = 'Semua Agenda';
 
@@ -548,6 +546,55 @@ class MemberController extends Controller
         );
     }
 
+        public function actionExportCsv()
+    {
+        $agendaId = (string) Yii::$app->request->get('agenda_id', '');
+        $status = (string) Yii::$app->request->get('status', '');
+        $q = trim((string) Yii::$app->request->get('q', ''));
+
+        $rows = \app\models\DaftarHadirQuery::fetch([
+            'agenda_id' => $agendaId,
+            'status' => $status,
+            'q' => $q,
+        ]);
+
+        $filenameParts = ['daftar-hadir'];
+        if ($agendaId !== '') {
+            $filenameParts[] = $agendaId;
+        }
+        $filenameParts[] = date('Ymd-His');
+        $filename = implode('-', $filenameParts) . '.csv';
+
+        Yii::$app->response->format = \yii\web\Response::FORMAT_RAW;
+        Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        Yii::$app->response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+
+        $stream = fopen('php://temp', 'r+');
+
+        // BOM supaya Excel membaca karakter UTF-8 (nama dengan huruf non-ASCII) dengan benar.
+        fwrite($stream, "\xEF\xBB\xBF");
+
+        fputcsv($stream, ['NIK/NIM', 'Nama Peserta', 'Unit/Bagian', 'Agenda', 'Waktu Scan', 'Status']);
+
+        foreach ($rows as $row) {
+            $hadir = $row['absensi_id'] !== null;
+            fputcsv($stream, [
+                $row['identitas_number'] ?: '-',
+                $row['nama'],
+                $row['instansi'] ?: '-',
+                $row['pembahasan'],
+                $hadir ? Yii::$app->formatter->asDatetime($row['waktu_scan'], 'php:d M Y H:i') : '-',
+                $hadir ? 'Hadir' : 'Tidak Hadir',
+            ]);
+        }
+
+        rewind($stream);
+        $csvContent = stream_get_contents($stream);
+        fclose($stream);
+
+        return $csvContent;
+    }
+
 
     /**
      * Displays a single Member model.
@@ -641,7 +688,11 @@ class MemberController extends Controller
      */
     public function actionDelete($member_id)
     {
-        $this->findModel($member_id)->delete();
+        $model = $this->findModel($member_id);
+        $model->deleted_at = date('Y-m-d H:i:s');
+        $model->is_active = 0;
+        $model->updated_by = Yii::$app->user->id;
+        $model->save(false, ['deleted_at', 'is_active', 'updated_by', 'updated_at']);
 
         return $this->redirect([
             'index'

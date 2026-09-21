@@ -33,6 +33,7 @@ use Yii;
  */
 class Lampiran extends \yii\db\ActiveRecord
 {
+    public $uploadFile;
 
     /**
      * ENUM field values
@@ -61,8 +62,8 @@ class Lampiran extends \yii\db\ActiveRecord
             [['ringkasan', 'status'], 'string'],
             [['email_sent_at', 'uploaded_at', 'created_at', 'updated_at', 'deleted_at'], 'safe'],
             [['jenis_lampiran'], 'string', 'max' => 50],
-            [['file_path'], 'string', 'max' => 255],
-            [['original_name'], 'string', 'max' => 255],
+            [['file_path', 'original_name'], 'string', 'max' => 255],
+            [['uploadFile'], 'file', 'extensions' => ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'], 'checkExtensionByMimeType' => true, 'skipOnEmpty' => true, 'maxSize' => 5 * 1024 * 1024, 'message' => 'File gagal diunggah.', 'uploadRequired' => 'Silakan pilih foto terlebih dahulu.', 'wrongExtension' => 'Format file tidak sesuai. Hanya JPG, JPEG, JFIF, PNG, GIF, atau WEBP yang diperbolehkan.', 'wrongMimeType' => 'File harus berupa gambar JPG, JPEG, JFIF, PNG, GIF, atau WEBP.', 'tooBig' => 'Ukuran foto terlalu besar. Maksimal 5 MB.'],
             ['status', 'in', 'range' => array_keys(self::optsStatus())],
             [['agenda_id'], 'exist', 'skipOnError' => true, 'targetClass' => Agenda::class, 'targetAttribute' => ['agenda_id' => 'agenda_id']],
             [['created_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['created_by' => 'user_id']],

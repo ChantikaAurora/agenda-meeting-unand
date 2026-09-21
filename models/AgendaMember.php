@@ -24,6 +24,9 @@ class AgendaMember extends \yii\db\ActiveRecord
     const PERAN_PESERTA = 'peserta';
     const PERAN_NARASUMBER = 'narasumber';
     const PERAN_MODERATOR = 'moderator';
+    const EMAIL_BELUM_TERKIRIM = 'belum_terkirim';
+    const EMAIL_TERKIRIM = 'terkirim';
+    const EMAIL_GAGAL = 'gagal';
 
     public static function tableName()
     {
@@ -35,6 +38,10 @@ class AgendaMember extends \yii\db\ActiveRecord
         return [
             [['created_by', 'deleted_at'], 'default', 'value' => null],
             [['peran'], 'default', 'value' => self::PERAN_PESERTA],
+            [['email_status'], 'default', 'value' => self::EMAIL_BELUM_TERKIRIM],
+            [['email_sent_at'], 'default', 'value' => null],
+            [['email_status'], 'in', 'range' => array_keys(self::optsEmailStatus())],
+            [['email_sent_at'], 'safe'],
             [['agenda_id', 'member_id'], 'required'],
             [['agenda_id', 'member_id', 'created_by'], 'integer'],
             [['created_at', 'deleted_at'], 'safe'],
@@ -56,6 +63,9 @@ class AgendaMember extends \yii\db\ActiveRecord
             'created_by' => 'Created By',
             'created_at' => 'Created At',
             'deleted_at' => 'Deleted At',
+            'peran' => 'Peran',
+            'email_status' => 'Status Undangan',
+            'email_sent_at' => 'Waktu Kirim',
         ];
     }
 
@@ -86,5 +96,28 @@ class AgendaMember extends \yii\db\ActiveRecord
     public function displayPeran()
     {
         return self::optsPeran()[$this->peran] ?? $this->peran;
+    }
+
+        public static function optsEmailStatus(): array
+    {
+        return [
+            self::EMAIL_BELUM_TERKIRIM => 'Belum Terkirim',
+            self::EMAIL_TERKIRIM => 'Terkirim',
+            self::EMAIL_GAGAL => 'Gagal',
+        ];
+    }
+
+    public function displayEmailStatus(): string
+    {
+        return self::optsEmailStatus()[$this->email_status] ?? $this->email_status;
+    }
+
+    public function emailStatusBadgeStyle(): string
+    {
+        return match ($this->email_status) {
+            self::EMAIL_TERKIRIM => 'background:#E3F5E7;color:#1f7a3d;',
+            self::EMAIL_GAGAL => 'background:#FBE4E4;color:#a12622;',
+            default => 'background:#EFEFEF;color:#666;',
+        };
     }
 }

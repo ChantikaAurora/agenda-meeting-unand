@@ -59,3 +59,11 @@ node_modules
 
 # entry point khusus testing, tidak perlu ikut production
 /web/index-test.php
+# file yang di-generate saat runtime (QR code & tanda tangan peserta),
+# isinya beda-beda di tiap mesin/environment dan tidak boleh ikut ke repo
+/web/uploads/qrcodes/*
+!/web/uploads/qrcodes/.gitkeep
+!/web/uploads/qrcodes/.htaccess
+/web/uploads/signatures/*
+!/web/uploads/signatures/.gitkeep
+!/web/uploads/signatures/.htaccess

@@ -25,6 +25,20 @@ use yii\widgets\LinkPager;
  */
 
 $this->registerCss(<<<CSS
+.btn-dh-search {
+    background: #1f4d2c;
+    border-color: #1f4d2c;
+    color: #fff;
+    border-radius: .5rem;
+    font-size: .85rem;
+}
+
+.btn-dh-search:hover,
+.btn-dh-search:focus {
+    background: #173d22;
+    border-color: #173d22;
+    color: #fff;
+}
 
 .dh-wrapper {
     width: 100%;
@@ -41,7 +55,15 @@ $this->registerCss(<<<CSS
     color: var(--bs-secondary-color);
     text-decoration: none;
 }
+.dh-breadcrumb a:hover {
+    color: #1f4d2c;
+    text-decoration: underline;
+}
 
+.dh-breadcrumb .current {
+    color: #1f4d2c;
+    font-weight: 600;
+}
 .dh-header h1 {
     font-size: 1.5rem;
     font-weight: 700;
@@ -358,27 +380,6 @@ CSS
 $this->registerJs(<<<JS
 
 /*
- * Tombol Cetak
- */
-
-var printBtn =
-    document.getElementById('dh-print-btn');
-
-if (printBtn) {
-
-    printBtn.addEventListener(
-        'click',
-        function () {
-
-            window.print();
-
-        }
-    );
-
-}
-
-
-/*
  * Tombol PDF
  */
 
@@ -415,7 +416,7 @@ if (pdfBtn) {
 
 
 /*
- * Tombol Export
+ * Tombol Export (CSV)
  */
 
 var exportBtn =
@@ -427,15 +428,26 @@ if (exportBtn) {
         'click',
         function () {
 
-            alert(
-                'Fitur Export akan segera hadir.'
-            );
+            var params = new URLSearchParams(window.location.search);
+            var exportParams = new URLSearchParams();
+
+            ['agenda_id', 'status', 'q'].forEach(function (key) {
+                var value = params.get(key);
+                if (value !== null && value !== '') {
+                    exportParams.set(key, value);
+                }
+            });
+
+            var url = '/index.php?r=member/export-csv';
+            if (exportParams.toString()) {
+                url += '&' + exportParams.toString();
+            }
+
+            window.location.href = url;
 
         }
     );
-
 }
-
 
 /*
  * Auto submit filter
@@ -465,7 +477,33 @@ JS
 
 
 <div class="dh-wrapper">
+    <div class="dh-wrapper">
 
+    <?php
+    $selectedAgenda = null;
+    if ($agendaId !== '') {
+        foreach ($agendaList as $agendaItem) {
+            if ((string) $agendaItem->agenda_id === (string) $agendaId) {
+                $selectedAgenda = $agendaItem;
+                break;
+            }
+        }
+    }
+    ?>
+
+    <div class="dh-breadcrumb">
+        <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a>
+        &nbsp;›&nbsp;
+        <a href="<?= Url::to(['/agenda/index']) ?>">Kelola Agenda</a>
+        <?php if ($selectedAgenda !== null): ?>
+            &nbsp;›&nbsp;
+            <a href="<?= Url::to(['/agenda/view', 'id' => $selectedAgenda->agenda_id]) ?>">
+                <?= Html::encode($selectedAgenda->pembahasan) ?>
+            </a>
+        <?php endif; ?>
+        &nbsp;›&nbsp;
+        <span class="current">Daftar Hadir</span>
+    </div>
 
     <!-- =============================== -->
     <!-- HEADER -->
@@ -480,23 +518,13 @@ JS
             </h1>
 
             <p>
-                Kelola dan pantau kehadiran peserta untuk berbagai agenda.
+                Kelola dan pantau kehadiran peserta untuk agenda meeting di Universitas Andalas.
             </p>
 
         </div>
 
 
         <div class="d-flex gap-2 dh-actions">
-
-            <button
-                type="button"
-                id="dh-print-btn"
-                class="btn btn-outline-secondary">
-
-                &#128438; Cetak
-
-            </button>
-
 
             <button
                 type="button"
@@ -611,111 +639,6 @@ JS
         </div>
 
     </div>
-
-
-    <!-- =============================== -->
-    <!-- FILTER -->
-    <!-- =============================== -->
-
-    <?= Html::beginForm(
-        ['index'],
-        'get',
-        [
-            'class' => 'dh-toolbar mb-4'
-        ]
-    ) ?>
-
-
-        <!-- Search -->
-
-        <div class="search-box">
-
-            <span class="search-icon">
-                &#128269;
-            </span>
-
-            <?= Html::textInput(
-                'q',
-                $q,
-                [
-                    'class' => 'form-control',
-                    'placeholder' => 'Cari NIK, Nama...'
-                ]
-            ) ?>
-
-        </div>
-
-
-        <!-- Agenda -->
-
-        <?= Html::dropDownList(
-
-            'agenda_id',
-
-            $agendaId,
-
-            [
-                '' => 'Semua Agenda'
-            ]
-            +
-            array_column(
-                $agendaList,
-                'pembahasan',
-                'agenda_id'
-            ),
-
-            [
-                'class' => 'form-select',
-                'data-autosubmit' => true
-            ]
-
-        ) ?>
-
-
-        <!-- Status -->
-
-        <?= Html::dropDownList(
-
-            'status',
-
-            $status,
-
-            [
-
-                '' => 'Semua Status',
-
-                'hadir' => 'Hadir',
-
-                'tidak_hadir' => 'Tidak Hadir',
-
-            ],
-
-            [
-
-                'class' => 'form-select',
-
-                'data-autosubmit' => true
-
-            ]
-
-        ) ?>
-
-
-        <!-- Cari -->
-
-        <?= Html::submitButton(
-
-            'Cari',
-
-            [
-                'class' => 'btn btn-primary'
-            ]
-
-        ) ?>
-
-
-    <?= Html::endForm() ?>
-
 
     <!-- =============================== -->
     <!-- TABEL -->
@@ -900,51 +823,24 @@ JS
                             <td class="text-end">
 
 
-                                <?php if (
-                                    $hadir &&
-                                    !empty(
-                                        $row['tanda_tangan_path']
-                                    )
-                                ): ?>
+                                <?php
+                                $signatureExists = $hadir
+                                    && !empty($row['tanda_tangan_path'])
+                                    && is_file(Yii::getAlias('@webroot/' . ltrim($row['tanda_tangan_path'], '/')));
+                                ?>
 
+                                <?php if ($signatureExists): ?>
 
-                                    <?= Html::a(
+                                    <?= Html::a('Lihat TTD', Url::to('@web/' . ltrim($row['tanda_tangan_path'], '/')), [
+                                        'class' => 'btn btn-sm btn-outline-secondary',
+                                        'target' => '_blank',
+                                    ]) ?>
 
-                                        'Lihat TTD',
+                                <?php elseif ($hadir): ?>
 
-                                        Url::to(
-                                            '@web/' .
-                                            ltrim(
-                                                $row[
-                                                    'tanda_tangan_path'
-                                                ],
-                                                '/'
-                                            )
-                                        ),
-
-                                        [
-
-                                            'class' =>
-                                                'btn btn-sm btn-outline-secondary',
-
-                                            'target' =>
-                                                '_blank',
-
-                                        ]
-
-                                    ) ?>
-
-
-                                <?php else: ?>
-
-
-                                    <span class="text-secondary">
-                                        -
-                                    </span>
-
+                                    <span class="text-muted" style="font-size:.78rem;">TTD tidak tersedia</span>
 
                                 <?php endif; ?>
-
 
                             </td>
 

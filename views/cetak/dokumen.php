@@ -4,6 +4,9 @@ use yii\helpers\Html;
 
 /** @var yii\web\View $this */
 /** @var app\models\Agenda $model */
+/** @var bool $forPdf */
+
+$forPdf = $forPdf ?? false;
 
 $this->title = 'Cetak Dokumen Agenda';
 
@@ -12,13 +15,17 @@ $this->title = 'Cetak Dokumen Agenda';
    QR CODE
    ========================================================= */
 
-$qrValue = !empty($model->qr_code_value)
-    ? $model->qr_code_value
-    : $model->agenda_id;
+$qrValue = (string) ($model->qr_code_value ?? '');
 
-$qrImageUrl =
-    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='
-    . urlencode($qrValue);
+$qrImageUrl = null;
+if (!empty($model->qr_code_path)) {
+    $qrFile = Yii::getAlias('@webroot/' . $model->qr_code_path);
+    if (is_file($qrFile)) {
+        $qrImageUrl = $forPdf
+            ? 'data:image/png;base64,' . base64_encode((string) file_get_contents($qrFile))
+            : Yii::getAlias('@web/' . $model->qr_code_path);
+    }
+}
 
 
 /* =========================================================
@@ -62,9 +69,9 @@ $bulanIndo = [
 
 $tanggal = strtotime($model->tanggal);
 
-$namaHari = $hariIndo[date('l', $tanggal)];
+$namaHari = $hariIndo[date('l', $tanggal)] ?? date('l', $tanggal);
 $tanggalAngka = date('d', $tanggal);
-$namaBulan = $bulanIndo[date('F', $tanggal)];
+$namaBulan = $bulanIndo[date('F', $tanggal)] ?? date('F', $tanggal);
 $tahun = date('Y', $tanggal);
 
 $tanggalFormatted = $namaHari . ', ' . $tanggalAngka . ' ' . $namaBulan . ' ' . $tahun;
@@ -81,24 +88,18 @@ $waktuSelesai = date('H:i', strtotime($model->waktu_selesai));
 
 <style>
 
-* {
+.dokumen-page,
+.dokumen-page * {
     box-sizing: border-box;
 }
 
-html,
-body {
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    background: #f3f4f6;
+.dokumen-page {
     color: #000;
     font-family: "Times New Roman", Times, serif;
     font-size: 16px;
 }
 
-.no-print {
+.dokumen-page .no-print {
     width: 800px;
     margin: 18px auto 14px;
     display: flex;
@@ -106,24 +107,59 @@ body {
     justify-content: space-between;
 }
 
-.no-print a,
-.no-print button {
+.dokumen-page .no-print a,
+.dokumen-page .no-print button {
     font-family: Arial, sans-serif;
     font-size: 13px;
 }
 
-.dokumen-wrapper {
+.dokumen-page .no-print .back-button,
+.dokumen-page .no-print .print-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.dokumen-page .aksi-cetak {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.dokumen-page .no-print .back-button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+}
+
+.dokumen-page .no-print .back-button:hover {
+    border-color: #247b59;
+    color: #247b59;
+}
+
+.dokumen-page .no-print .print-button {
+    border: 1px solid #1769e0;
+    background: #1769e0;
+    color: #ffffff;
+}
+
+.dokumen-page .dokumen-wrapper {
     width: 800px;
-    min-height: 1120px;
+    min-height: 0;
     margin: 0 auto;
-    padding: 45px 55px 45px 70px;
+    padding: 38px 55px 35px 70px;
     background: #fff;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     line-height: 1.5;
 }
 
-.kop-surat {
+.dokumen-page .kop-surat {
     position: relative;
     min-height: 95px;
     padding: 0 35px 12px 95px;
@@ -132,7 +168,7 @@ body {
     border-bottom: 2px solid #000;
 }
 
-.kop-logo {
+.dokumen-page .kop-logo {
     position: absolute;
     left: 0;
     top: -3px;
@@ -141,7 +177,7 @@ body {
     object-fit: contain;
 }
 
-.kop-surat h1 {
+.dokumen-page .kop-surat h1 {
     margin: 0;
     padding: 0;
     font-size: 23px;
@@ -149,19 +185,19 @@ body {
     line-height: 1.2;
 }
 
-.kop-alamat {
+.dokumen-page .kop-alamat {
     margin: 4px 0 2px;
     font-size: 12px;
     line-height: 1.3;
 }
 
-.kop-kontak {
+.dokumen-page .kop-kontak {
     margin: 2px 0;
     font-size: 11px;
     line-height: 1.3;
 }
 
-.judul-dokumen {
+.dokumen-page .judul-dokumen {
     margin: 18px 0 22px;
     text-align: center;
     font-size: 19px;
@@ -170,11 +206,11 @@ body {
     text-decoration: underline;
 }
 
-.detail-container {
+.dokumen-page .detail-container {
     margin-bottom: 18px;
 }
 
-.detail-row {
+.dokumen-page .detail-row {
     display: flex;
     align-items: flex-start;
     margin-bottom: 8px;
@@ -182,44 +218,45 @@ body {
     line-height: 1.45;
 }
 
-.detail-label {
+.dokumen-page .detail-label {
     width: 135px;
     min-width: 135px;
     font-weight: bold;
+    color: #000;
 }
 
-.detail-value {
+.dokumen-page .detail-value {
     flex: 1;
     padding-left: 2px;
 }
 
-.section-title {
+.dokumen-page .section-title {
     margin: 14px 0 6px;
     font-size: 17px;
     font-weight: bold;
     line-height: 1.4;
 }
 
-.isi-dokumen {
+.dokumen-page .isi-dokumen {
     margin: 0;
     font-size: 16px;
     line-height: 1.55;
     text-align: justify;
 }
 
-.pesan-qr {
+.dokumen-page .pesan-qr {
     margin: 15px 0 10px;
     font-size: 16px;
     line-height: 1.45;
 }
 
-.qr-wrapper {
+.dokumen-page .qr-wrapper {
     display: flex;
     justify-content: center;
     margin-top: 8px;
 }
 
-.qr-box {
+.dokumen-page .qr-box {
     width: 140px;
     padding: 6px;
     border: 1px dashed #999;
@@ -227,7 +264,7 @@ body {
     text-align: center;
 }
 
-.qr-box img {
+.dokumen-page .qr-box img {
     display: block;
     width: 115px !important;
     height: 115px !important;
@@ -235,14 +272,14 @@ body {
     object-fit: contain;
 }
 
-.qr-title {
+.dokumen-page .qr-title {
     margin: 5px 0 1px;
     font-size: 9px !important;
     font-weight: bold;
     line-height: 1.2;
 }
 
-.qr-id {
+.dokumen-page .qr-id {
     margin: 0;
     font-size: 8px !important;
     color: #666;
@@ -250,7 +287,7 @@ body {
     word-break: break-word;
 }
 
-.footer-dokumen {
+.dokumen-page .footer-dokumen {
     margin: 24px 0 0;
     text-align: right;
     font-size: 9px !important;
@@ -262,7 +299,7 @@ body {
 
     @page {
         size: A4;
-        margin: 3cm 3cm 3cm 4cm;
+        margin: 0;
     }
 
     html,
@@ -272,21 +309,21 @@ body {
         background: #fff !important;
     }
 
-    .no-print {
+    .dokumen-page .no-print {
         display: none !important;
     }
 
-    .dokumen-wrapper {
+    .dokumen-page .dokumen-wrapper {
         width: 100% !important;
         min-height: auto !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 3cm 3cm 3cm 4cm !important;
         background: #fff !important;
         border-radius: 0 !important;
         box-shadow: none !important;
     }
 
-    .kop-surat {
+    .dokumen-page .kop-surat {
         min-height: 88px;
         padding-left: 90px;
         padding-right: 35px;
@@ -294,86 +331,86 @@ body {
         margin-bottom: 17px;
     }
 
-    .kop-logo {
+    .dokumen-page .kop-logo {
         left: 0;
         top: -2px;
         width: 75px;
         height: 75px;
     }
 
-    .kop-surat h1 {
+    .dokumen-page .kop-surat h1 {
         font-size: 21px;
     }
 
-    .kop-alamat {
+    .dokumen-page .kop-alamat {
         font-size: 10px;
     }
 
-    .kop-kontak {
+    .dokumen-page .kop-kontak {
         font-size: 9px;
     }
 
-    .judul-dokumen {
+    .dokumen-page .judul-dokumen {
         margin: 15px 0 20px;
         font-size: 17px;
     }
 
-    .detail-container {
+    .dokumen-page .detail-container {
         margin-bottom: 16px;
     }
 
-    .detail-row {
+    .dokumen-page .detail-row {
         margin-bottom: 6px;
         font-size: 14px;
         line-height: 1.4;
     }
 
-    .detail-label {
+    .dokumen-page .detail-label {
         width: 125px;
         min-width: 125px;
     }
 
-    .section-title {
+    .dokumen-page .section-title {
         margin-top: 12px;
         margin-bottom: 5px;
         font-size: 15px;
     }
 
-    .isi-dokumen {
+    .dokumen-page .isi-dokumen {
         font-size: 14px;
         line-height: 1.5;
     }
 
-    .pesan-qr {
+    .dokumen-page .pesan-qr {
         margin-top: 12px;
         margin-bottom: 8px;
         font-size: 14px;
     }
 
-    .qr-wrapper {
+    .dokumen-page .qr-wrapper {
         margin-top: 6px;
     }
 
-    .qr-box {
+    .dokumen-page .qr-box {
         width: 130px;
         padding: 5px;
     }
 
-    .qr-box img {
+    .dokumen-page .qr-box img {
         width: 110px !important;
         height: 110px !important;
     }
 
-    .qr-title {
+    .dokumen-page .qr-title {
         margin-top: 4px;
         font-size: 8px !important;
     }
 
-    .qr-id {
+    .dokumen-page .qr-id {
         font-size: 7px !important;
     }
 
-    .footer-dokumen {
+    .dokumen-page .footer-dokumen {
         margin-top: 20px;
         font-size: 8px !important;
     }
@@ -383,10 +420,16 @@ body {
 </style>
 
 
+<div class="dokumen-page">
+
+<?php if (!$forPdf): ?>
 <div class="no-print">
-    <?= Html::a('&larr; Kembali', ['/unit/index'], ['class' => 'btn btn-default']) ?>
-    <button type="button" onclick="window.print()" class="btn btn-primary">Cetak</button>
+    <?= Html::a('&larr; Kembali ke Detail Agenda', ['/agenda/view', 'id' => $model->agenda_id], ['class' => 'back-button']) ?>
+    <span class="aksi-cetak">
+        <button type="button" onclick="window.print()" class="print-button">Cetak</button>
+    </span>
 </div>
+<?php endif; ?>
 
 
 <div class="dokumen-wrapper">
@@ -423,13 +466,6 @@ body {
             </div>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">Nomor Surat</div>
-            <div class="detail-value">
-                : <?= Html::encode($model->nomor_surat ?? '-') ?>
-            </div>
-        </div>
-
     </div>
 
     <div class="section-title">Topik Bahasan:</div>
@@ -444,14 +480,21 @@ body {
 
     <div class="qr-wrapper">
         <div class="qr-box">
-            <img src="<?= Html::encode($qrImageUrl) ?>" alt="QR Code Presensi">
-            <p class="qr-title">SCAN UNTUK PRESENSI</p>
-            <p class="qr-id">ID Rapat: <?= Html::encode($qrValue) ?></p>
+            <?php if ($qrImageUrl !== null): ?>
+                <img src="<?= Html::encode($qrImageUrl) ?>" alt="QR Code Presensi">
+                <p class="qr-title">SCAN UNTUK PRESENSI</p>
+                <p class="qr-id">ID Rapat: <?= Html::encode($qrValue) ?></p>
+            <?php else: ?>
+                <p class="qr-title">QR PRESENSI BELUM TERSEDIA</p>
+                <p class="qr-id">Buat ulang QR dari halaman detail agenda.</p>
+            <?php endif; ?>
         </div>
     </div>
 
     <p class="footer-dokumen">
         Dicetak pada: <?= date('d M Y H:i') ?> | Sistem Agenda Universitas Andalas
     </p>
+
+</div>
 
 </div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\controllers;
 
 use Yii;
+use app\models\Agenda;
 use app\models\ContactForm;
 use app\models\LoginForm;
 use yii\captcha\CaptchaAction;
@@ -13,6 +14,8 @@ use yii\filters\VerbFilter;
 use yii\base\Security;
 use yii\mail\MailerInterface;
 use yii\web\Controller;
+use yii\db\Expression;
+use yii\helpers\Url;
 use yii\web\ErrorAction;
 use yii\web\Response;
 
@@ -71,14 +74,42 @@ class SiteController extends Controller
         ];
     }
 
-    /**
-     * Displays homepage.
-     *
-     * @return string
-     */
     public function actionIndex(): string
     {
-        return $this->render('index');
+        $this->layout = 'public';
+
+        $this->view->params['publicWide'] = true;
+
+        $sekarang = date('Y-m-d H:i:s');
+
+        $agendas = Agenda::find()
+            ->with(['lokasi', 'lokasi.unit'])
+            ->andWhere(['deleted_at' => null])
+            ->andWhere(['not', ['status' => Agenda::STATUS_DIBATALKAN]])
+            ->andWhere(new Expression(
+                "CONCAT(tanggal, ' ', waktu_selesai) >= :sekarang",
+                [':sekarang' => $sekarang]
+            ))
+            ->orderBy(['tanggal' => SORT_ASC, 'waktu_mulai' => SORT_ASC])
+            ->limit(20)
+            ->all();
+
+        return $this->render('index', [
+            'agendas' => $agendas,
+            'menitSebelum' => Agenda::menitAbsensiDibuka(),
+        ]);
+    }
+
+    private function tujuanSetelahLogin(): string
+    {
+        $returnUrl = Yii::$app->user->getReturnUrl();
+        $beranda = rtrim((string) Yii::$app->homeUrl, '/');
+
+        if ($returnUrl === null || rtrim((string) $returnUrl, '/') === $beranda) {
+            return Url::to(['/dashboard/index']);
+        }
+
+        return $returnUrl;
     }
 
     /**
@@ -97,7 +128,7 @@ class SiteController extends Controller
         $model = new LoginForm($this->security);
 
         if ($model->load($this->request->post()) && $model->login()) {
-            return $this->goBack();
+            return $this->redirect($this->tujuanSetelahLogin());
         }
 
         $model->password = '';

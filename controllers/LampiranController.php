@@ -6,6 +6,7 @@ use Yii;
 use app\models\Agenda;
 use app\models\Lampiran;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\helpers\FileHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
@@ -14,22 +15,31 @@ use yii\web\UploadedFile;
 
 class LampiranController extends Controller
 {
-    public $layout = 'notulis';
+    public $layout = 'admin';
 
     public function behaviors()
     {
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['create', 'update', 'delete'],
                 'rules' => [
                     [
                         'allow' => true,
+                        'actions' => ['create', 'update', 'delete', 'index', 'preview', 'document', 'download'],
                         'matchCallback' => static function () {
-                            return !Yii::$app->user->isGuest
-                                && Yii::$app->user->identity->can('manageLampiran');
+                            /** @var \app\models\User|null $identity */
+                            $identity = Yii::$app->user->identity;
+                            return !Yii::$app->user->isGuest 
+                                && $identity !== null 
+                                && $identity->can('manageLampiran');
                         },
                     ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'delete' => ['POST'],
                 ],
             ],
         ];
@@ -40,45 +50,41 @@ class LampiranController extends Controller
         $agenda = $this->findAgenda($agenda_id);
         $model = new Lampiran();
         $model->agenda_id = $agenda->agenda_id;
-        $model->jenis_lampiran = 'notulen';
-        $model->status = Lampiran::STATUS_FINAL;
+        $model->jenis_lampiran = 'Dokumentasi Rapat';
 
         if (Yii::$app->request->isPost) {
-            $model->ringkasan = Yii::$app->request->post('ringkasan');
-            $model->status = Yii::$app->request->post('status', Lampiran::STATUS_FINAL);
-            $model->file_path = '';
-            $file = UploadedFile::getInstanceByName('file');
+            $model->load(Yii::$app->request->post());
+            $model->agenda_id = $agenda->agenda_id;
+            $model->jenis_lampiran = 'Dokumentasi Rapat';
+            $model->uploadFile = UploadedFile::getInstance($model, 'uploadFile');
 
-            if ($file === null) {
-                $model->addError('file_path', 'Silakan pilih file notulen terlebih dahulu.');
-            } elseif (($uploadError = $this->validateUpload($file)) !== null) {
-                $model->addError('file_path', $uploadError);
-            } else {
-                $directory = Yii::getAlias('@webroot/uploads/notulen');
+            if ($model->uploadFile !== null) {
+                $model->file_path = 'uploads/lampiran/' . Yii::$app->security->generateRandomString(24)
+                    . '.' . strtolower($model->uploadFile->extension);
+            }
+            $model->uploaded_by = (int) Yii::$app->user->id;
+            $model->created_by = (int) Yii::$app->user->id;
+
+            if ($model->validate()) {
+                $directory = Yii::getAlias('@webroot/uploads/lampiran');
                 FileHelper::createDirectory($directory, 0755);
-                $filename = Yii::$app->security->generateRandomString(24) . '.' . strtolower($file->extension);
-                $relativePath = 'uploads/notulen/' . $filename;
+                $filePath = Yii::getAlias('@webroot/' . $model->file_path);
 
-                if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $filename)) {
-                    $model->addError('file_path', 'File notulen gagal disimpan.');
-                } else {
-                    $model->file_path = $relativePath;
-                    $model->original_name = $this->getOriginalFilename($file);
-                    $model->status = Lampiran::STATUS_FINAL;
-                    $model->uploaded_by = (int) Yii::$app->user->id;
-                    $model->created_by = (int) Yii::$app->user->id;
-
-                    if ($model->save(false)) {
-                        Yii::$app->session->setFlash('success', 'Notulen berhasil diunggah.');
-                        return $this->redirect(['/notulis/index']);
-                    }
+                if ($model->uploadFile->saveAs($filePath) && $model->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Foto dokumentasi berhasil diunggah.');
+                    return $this->redirect(['/agenda/view', 'id' => $agenda->agenda_id]);
                 }
+
+                if (is_file($filePath)) {
+                    @unlink($filePath);
+                }
+                $model->addError('uploadFile', 'Foto gagal disimpan. Silakan coba lagi.');
             }
         }
 
         return $this->render('create', [
-            'agenda' => $agenda,
             'model' => $model,
+            'agenda' => $agenda,
         ]);
     }
 
@@ -203,15 +209,24 @@ class LampiranController extends Controller
         return Yii::$app->response->sendFile($filePath, $model->original_name ?: basename($filePath));
     }
 
-    public function actionDelete($agenda_id)
+    public function actionDelete($id)
     {
-        $model = $this->findLampiran($agenda_id);
+        $model = Lampiran::findOne(['lampiran_id' => $id, 'deleted_at' => null]);
+        if ($model === null) {
+            throw new NotFoundHttpException('Foto dokumentasi tidak ditemukan.');
+        }
+
+        $filePath = Yii::getAlias('@webroot/' . $model->file_path);
         $model->deleted_at = date('Y-m-d H:i:s');
         $model->updated_by = (int) Yii::$app->user->id;
-        $model->save(false, ['deleted_at', 'updated_by']);
+        $model->save(false);
 
-        Yii::$app->session->setFlash('success', 'Notulen berhasil dihapus.');
-        return $this->redirect(['/notulis/index']);
+        if (is_file($filePath)) {
+            @unlink($filePath);
+        }
+
+        Yii::$app->session->setFlash('success', 'Foto dokumentasi berhasil dihapus.');
+        return $this->redirect(['/agenda/view', 'id' => $model->agenda_id]);
     }
 
     private function findAgenda($id): Agenda

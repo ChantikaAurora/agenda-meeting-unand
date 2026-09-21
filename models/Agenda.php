@@ -2,7 +2,9 @@
 
 namespace app\models;
 
+use DateTimeImmutable;
 use Yii;
+use app\services\AgendaStatusResolver;
 use yii\behaviors\BlameableBehavior;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
@@ -28,6 +30,9 @@ use yii\db\Expression;
  * @property string|null $updated_at
  * @property string|null $deleted_at
  *
+ * @property-read string $statusSaatIni
+ * @property-read string $labelStatusSaatIni
+ *
  * @property Absensi[] $absensis
  * @property AgendaMember[] $agendaMembers
  * @property User $createdBy
@@ -43,12 +48,22 @@ class Agenda extends \yii\db\ActiveRecord
     public const STATUS_SELESAI = 'selesai';
     public const STATUS_DIBATALKAN = 'dibatalkan';
 
+    public const SCENARIO_INPUT_PENGGUNA = 'input-pengguna';
+
     public static function statusList(): array
     {
         return [
             self::STATUS_TERJADWAL => 'Terjadwal',
             self::STATUS_BERLANGSUNG => 'Berlangsung',
             self::STATUS_SELESAI => 'Selesai',
+            self::STATUS_DIBATALKAN => 'Dibatalkan',
+        ];
+    }
+
+    public static function statusPilihanForm(): array
+    {
+        return [
+            self::STATUS_TERJADWAL => 'Ikuti jadwal (otomatis)',
             self::STATUS_DIBATALKAN => 'Dibatalkan',
         ];
     }
@@ -75,12 +90,20 @@ class Agenda extends \yii\db\ActiveRecord
         ];
     }
 
+    public function scenarios()
+    {
+        $scenarios = parent::scenarios();
+        $scenarios[self::SCENARIO_INPUT_PENGGUNA] = $scenarios[self::SCENARIO_DEFAULT];
+
+        return $scenarios;
+    }
+
     public function rules()
     {
         return [
             [['nomor_surat', 'deskripsi', 'qr_code_value', 'qr_code_path', 'created_by', 'updated_by', 'updated_at', 'deleted_at'], 'default', 'value' => null],
             [['pembahasan', 'tanggal', 'tahun_akademik', 'waktu_mulai', 'waktu_selesai', 'lokasi_id', 'status'], 'required'],
-            [['deskripsi'], 'string'],
+            [['deskripsi'], 'string', 'max' => 500],
             [['tanggal'], 'date', 'format' => 'php:Y-m-d'],
             [['waktu_mulai', 'waktu_selesai'], 'time', 'format' => 'php:H:i'],
             [['created_at', 'updated_at', 'deleted_at'], 'safe'],
@@ -88,7 +111,20 @@ class Agenda extends \yii\db\ActiveRecord
             [['nomor_surat'], 'string', 'max' => 100],
             [['pembahasan', 'qr_code_value', 'qr_code_path'], 'string', 'max' => 255],
             [['tahun_akademik'], 'string', 'max' => 20],
+
+            // Sistem (cron/sinkronisasi) boleh menulis seluruh status.
             ['status', 'in', 'range' => array_keys(self::statusList())],
+
+            // Pengguna hanya boleh mengirim status yang memang keputusan manusia.
+            // Ini mencegah orang memalsukan 'selesai' lewat form yang dimodifikasi.
+            [
+                'status',
+                'in',
+                'range' => array_keys(self::statusPilihanForm()),
+                'on' => self::SCENARIO_INPUT_PENGGUNA,
+                'message' => 'Status tersebut tidak dapat dipilih manual; status berlangsung/selesai ditentukan otomatis oleh jadwal.',
+            ],
+
             [['created_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['created_by' => 'user_id']],
             [['lokasi_id'], 'exist', 'skipOnError' => true, 'targetClass' => Lokasi::class, 'targetAttribute' => ['lokasi_id' => 'lokasi_id']],
             [['updated_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['updated_by' => 'user_id']],
@@ -131,6 +167,76 @@ class Agenda extends \yii\db\ActiveRecord
         ];
     }
 
+    /* ================= Status berbasis jadwal ================= */
+
+    public function getStatusSaatIni(?DateTimeImmutable $sekarang = null): string
+    {
+        return AgendaStatusResolver::resolve(
+            $this->tanggal,
+            $this->waktu_mulai,
+            $this->waktu_selesai,
+            $this->status,
+            $sekarang,
+        );
+    }
+
+    public function getLabelStatusSaatIni(): string
+    {
+        $status = $this->getStatusSaatIni();
+
+        return self::statusList()[$status] ?? $status;
+    }
+
+    /** Status agenda ini masih dikendalikan waktu (belum dibatalkan manual)? */
+    public function statusDikelolaOtomatis(): bool
+    {
+        return AgendaStatusResolver::dikelolaOtomatis($this->status);
+    }
+
+    public function getJadwalMulai(): ?DateTimeImmutable
+    {
+        return AgendaStatusResolver::gabungkan($this->tanggal, $this->waktu_mulai);
+    }
+
+    public function getJadwalSelesai(): ?DateTimeImmutable
+    {
+        return AgendaStatusResolver::gabungkan($this->tanggal, $this->waktu_selesai);
+    }
+
+    /** Berapa menit sebelum rapat dimulai QR presensi boleh dibuka. */
+    public static function menitAbsensiDibuka(): int
+    {
+        return max(0, (int) (Yii::$app->params['absensiDibukaMenitSebelum'] ?? 30));
+    }
+
+    /**
+     * Apakah presensi rapat ini sedang dibuka?
+     *
+     * Dipakai halaman publik untuk memutuskan apakah QR boleh ditampilkan.
+     * Token QR yang terpampang sepanjang waktu berarti siapa pun bisa mengisi
+     * daftar hadir berhari-hari sebelum rapat, tanpa pernah datang.
+     */
+    public function absensiTerbuka(?DateTimeImmutable $sekarang = null): bool
+    {
+        if ($this->status === self::STATUS_DIBATALKAN) {
+            return false;
+        }
+
+        $mulai = $this->getJadwalMulai();
+        $selesai = $this->getJadwalSelesai();
+
+        if ($mulai === null || $selesai === null) {
+            return false;
+        }
+
+        $sekarang ??= AgendaStatusResolver::sekarang();
+        $dibuka = $mulai->modify('-' . self::menitAbsensiDibuka() . ' minutes');
+
+        return $sekarang >= $dibuka && $sekarang <= $selesai;
+    }
+
+    /* ================= Relasi ================= */
+
     public function getAbsensis()
     {
         return $this->hasMany(Absensi::class, ['agenda_id' => 'agenda_id']);
@@ -166,11 +272,6 @@ class Agenda extends \yii\db\ActiveRecord
         return $this->hasOne(User::class, ['user_id' => 'updated_by']);
     }
 
-    /**
-     * Generate token unik untuk QR absensi. Sengaja BUKAN pakai agenda_id langsung
-     * (gampang ditebak/diubah manual di URL) -- token acak panjang praktis
-     * tidak bisa ditebak, sesuai poin keamanan QR di dokumen desain proyek ini.
-     */
     public function generateQrToken(): string
     {
         return 'AGD-' . Yii::$app->security->generateRandomString(32);
