@@ -12,6 +12,7 @@ use Yii;
  * @property string $jenis_lampiran
  * @property string|null $ringkasan
  * @property string $file_path
+ * @property string|null $original_name
  * @property string $status
  * @property string|null $email_sent_at
  * @property int|null $email_sent_by
@@ -54,15 +55,15 @@ class Lampiran extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['ringkasan', 'email_sent_at', 'email_sent_by', 'created_by', 'updated_by', 'updated_at', 'deleted_at'], 'default', 'value' => null],
+            [['ringkasan', 'original_name', 'email_sent_at', 'email_sent_by', 'created_by', 'updated_by', 'updated_at', 'deleted_at'], 'default', 'value' => null],
             [['status'], 'default', 'value' => 'draft'],
             [['agenda_id', 'jenis_lampiran', 'file_path', 'uploaded_by'], 'required'],
             [['agenda_id', 'email_sent_by', 'uploaded_by', 'created_by', 'updated_by'], 'integer'],
             [['ringkasan', 'status'], 'string'],
             [['email_sent_at', 'uploaded_at', 'created_at', 'updated_at', 'deleted_at'], 'safe'],
             [['jenis_lampiran'], 'string', 'max' => 50],
-            [['file_path'], 'string', 'max' => 255],
-            [['uploadFile'], 'file', 'extensions' => ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'], 'checkExtensionByMimeType' => true, 'skipOnEmpty' => false, 'maxSize' => 5 * 1024 * 1024, 'message' => 'File gagal diunggah.', 'uploadRequired' => 'Silakan pilih foto terlebih dahulu.', 'wrongExtension' => 'Format file tidak sesuai. Hanya JPG, JPEG, JFIF, PNG, GIF, atau WEBP yang diperbolehkan.', 'wrongMimeType' => 'File harus berupa gambar JPG, JPEG, JFIF, PNG, GIF, atau WEBP.', 'tooBig' => 'Ukuran foto terlalu besar. Maksimal 5 MB.'],
+            [['file_path', 'original_name'], 'string', 'max' => 255],
+            [['uploadFile'], 'file', 'extensions' => ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'], 'checkExtensionByMimeType' => true, 'skipOnEmpty' => true, 'maxSize' => 5 * 1024 * 1024, 'message' => 'File gagal diunggah.', 'uploadRequired' => 'Silakan pilih foto terlebih dahulu.', 'wrongExtension' => 'Format file tidak sesuai. Hanya JPG, JPEG, JFIF, PNG, GIF, atau WEBP yang diperbolehkan.', 'wrongMimeType' => 'File harus berupa gambar JPG, JPEG, JFIF, PNG, GIF, atau WEBP.', 'tooBig' => 'Ukuran foto terlalu besar. Maksimal 5 MB.'],
             ['status', 'in', 'range' => array_keys(self::optsStatus())],
             [['agenda_id'], 'exist', 'skipOnError' => true, 'targetClass' => Agenda::class, 'targetAttribute' => ['agenda_id' => 'agenda_id']],
             [['created_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['created_by' => 'user_id']],
@@ -83,6 +84,7 @@ class Lampiran extends \yii\db\ActiveRecord
             'jenis_lampiran' => 'Jenis Lampiran',
             'ringkasan' => 'Ringkasan',
             'file_path' => 'File Path',
+            'original_name' => 'Nama Berkas Asli',
             'status' => 'Status',
             'email_sent_at' => 'Email Sent At',
             'email_sent_by' => 'Email Sent By',

@@ -12,6 +12,46 @@ use yii\web\Controller;
 class NotulisController extends Controller
 {
     public $layout = 'admin';
+
+    public function actionDashboard()
+    {
+        $this->layout = 'notulis';
+        $today = date('Y-m-d');
+        $agendas = Agenda::find()
+            ->andWhere(['deleted_at' => null])
+            ->with(['lokasi', 'lampirans'])
+            ->orderBy(['tanggal' => SORT_DESC])
+            ->limit(5)
+            ->all();
+
+        $totalAgenda = (int) Agenda::find()->andWhere(['deleted_at' => null])->count();
+        $agendaHariIni = (int) Agenda::find()
+            ->andWhere(['deleted_at' => null, 'tanggal' => $today])
+            ->count();
+        $belumDiunggah = 0;
+        $sudahDiunggah = 0;
+
+        $allAgendas = Agenda::find()
+            ->andWhere(['deleted_at' => null])
+            ->with('lampirans')
+            ->all();
+        foreach ($allAgendas as $agenda) {
+            $status = $this->hitungStatusNotulen($agenda);
+            if ($status === 'Belum Diunggah') {
+                $belumDiunggah++;
+            } else {
+                $sudahDiunggah++;
+            }
+        }
+
+        return $this->render('dashboard', [
+            'totalAgenda' => $totalAgenda,
+            'agendaHariIni' => $agendaHariIni,
+            'belumDiunggah' => $belumDiunggah,
+            'sudahDiunggah' => $sudahDiunggah,
+            'agendas' => $agendas,
+        ]);
+    }
     /**
      * Menampilkan daftar semua agenda beserta status notulennya,
      * dengan dukungan pencarian judul dan filter status notulen.
@@ -20,6 +60,7 @@ class NotulisController extends Controller
      */
     public function actionIndex()
     {
+        $this->layout = 'notulis';
         $search = \Yii::$app->request->get('search');
         $statusFilter = \Yii::$app->request->get('status_notulen');
 
