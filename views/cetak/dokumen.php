@@ -17,16 +17,10 @@ $this->title = 'Cetak Dokumen Agenda';
 
 $qrValue = (string) ($model->qr_code_value ?? '');
 
-// QR dibaca dari file yang sudah digenerate aplikasi sendiri.
-// Sebelumnya gambar diambil dari api.qrserver.com -- itu berarti token presensi
-// dikirim ke server pihak ketiga setiap halaman dibuka, dan siapa pun di sana
-// bisa memakainya untuk memalsukan kehadiran.
 $qrImageUrl = null;
 if (!empty($model->qr_code_path)) {
     $qrFile = Yii::getAlias('@webroot/' . $model->qr_code_path);
     if (is_file($qrFile)) {
-        // Dompdf tidak punya sesi login, jadi untuk PDF gambarnya ditanam
-        // langsung sebagai data URI, bukan lewat URL yang harus diambil ulang.
         $qrImageUrl = $forPdf
             ? 'data:image/png;base64,' . base64_encode((string) file_get_contents($qrFile))
             : Yii::getAlias('@web/' . $model->qr_code_path);
@@ -75,9 +69,9 @@ $bulanIndo = [
 
 $tanggal = strtotime($model->tanggal);
 
-$namaHari = $hariIndo[date('l', $tanggal)];
+$namaHari = $hariIndo[date('l', $tanggal)] ?? date('l', $tanggal);
 $tanggalAngka = date('d', $tanggal);
-$namaBulan = $bulanIndo[date('F', $tanggal)];
+$namaBulan = $bulanIndo[date('F', $tanggal)] ?? date('F', $tanggal);
 $tahun = date('Y', $tanggal);
 
 $tanggalFormatted = $namaHari . ', ' . $tanggalAngka . ' ' . $namaBulan . ' ' . $tahun;
@@ -94,9 +88,6 @@ $waktuSelesai = date('H:i', strtotime($model->waktu_selesai));
 
 <style>
 
-/* Gaya dokumen SENGAJA dibatasi ke .dokumen-page.
-   Sebelumnya aturan ini menargetkan `body`, sehingga font Times New Roman
-   ikut menimpa navbar dan sidebar di layout admin. */
 .dokumen-page,
 .dokumen-page * {
     box-sizing: border-box;
@@ -116,13 +107,13 @@ $waktuSelesai = date('H:i', strtotime($model->waktu_selesai));
     justify-content: space-between;
 }
 
-.no-print a,
+.dokumen-page .no-print a,
 .dokumen-page .no-print button {
     font-family: Arial, sans-serif;
     font-size: 13px;
 }
 
-.no-print .back-button,
+.dokumen-page .no-print .back-button,
 .dokumen-page .no-print .print-button {
     display: inline-flex;
     align-items: center;
@@ -435,8 +426,6 @@ $waktuSelesai = date('H:i', strtotime($model->waktu_selesai));
 <div class="no-print">
     <?= Html::a('&larr; Kembali ke Detail Agenda', ['/agenda/view', 'id' => $model->agenda_id], ['class' => 'back-button']) ?>
     <span class="aksi-cetak">
-        <?php // Unduh PDF dirender di server, jadi dijamin bebas header/footer browser. ?>
-
         <button type="button" onclick="window.print()" class="print-button">Cetak</button>
     </span>
 </div>

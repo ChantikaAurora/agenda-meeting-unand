@@ -68,10 +68,9 @@ class AgendaController extends Controller
         ]);
     }
 
-            public function actionView($id)
+    public function actionView($id)
     {
         $model = $this->findModel($id);
-
         $qrFile = !empty($model->qr_code_path)
             ? Yii::getAlias('@webroot/' . $model->qr_code_path)
             : null;

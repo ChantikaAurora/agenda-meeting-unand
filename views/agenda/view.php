@@ -45,12 +45,16 @@ $agendaMembers = array_values(array_filter($model->agendaMembers, static functio
 $members = array_map(static function ($agendaMember) {
     return $agendaMember->member;
 }, $agendaMembers);
+
 $attendeeMemberIds = [];
-foreach ($hadirRows as $row) {
-    if ($row['sumber'] === 'undangan' && $row['member_id'] !== null && $row['absensi_id'] !== null) {
-        $attendeeMemberIds[(int) $row['member_id']] = true;
+if (!empty($hadirRows)) {
+    foreach ($hadirRows as $row) {
+        if ($row['sumber'] === 'undangan' && $row['member_id'] !== null && $row['absensi_id'] !== null) {
+            $attendeeMemberIds[(int) $row['member_id']] = true;
+        }
     }
 }
+
 $lampirans = array_values(array_filter($model->lampirans, static function ($lampiran) {
     return $lampiran->deleted_at === null
         && is_file(Yii::getAlias('@webroot/' . $lampiran->file_path));
@@ -74,7 +78,6 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
      ========================================== -->
 <div class="agenda-view-header">
     <div class="agenda-view-header-top">
-
         <div class="agenda-view-header-content">
             <h1><?= Html::encode($model->pembahasan) ?></h1>
             <p>
@@ -98,7 +101,6 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                 ]) ?>
             </div>
         <?php endif; ?>
-
     </div>
 </div>
 
@@ -110,9 +112,7 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
              DETAIL AGENDA
              ====================================== -->
         <div class="agenda-card">
-
             <div class="agenda-detail-grid">
-
                 <div class="agenda-detail-item">
                     <div class="agenda-detail-label">Tanggal</div>
                     <div class="agenda-detail-value">
@@ -150,7 +150,6 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                         <?= Yii::$app->formatter->asDatetime($model->created_at, 'php:d M Y H:i') ?> WIB
                     </div>
                 </div>
-
             </div>
 
             <!-- ================== DESKRIPSI ================== -->
@@ -164,14 +163,12 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                     <?php endif; ?>
                 </div>
             </div>
-
         </div>
 
         <!-- ======================================
              DAFTAR HADIR
              ====================================== -->
         <div class="agenda-card hadir-card">
-
             <div class="agenda-card-header">
                 <h2>Daftar Hadir</h2>
                 <?= Html::a('Lihat Selengkapnya', ['/member/daftar-hadir', 'agenda_id' => $model->agenda_id], [
@@ -179,31 +176,30 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                 ]) ?>
             </div>
 
-            <div class="hadir-summary">
-                <div class="hadir-summary-item">
-                    <span class="hadir-summary-value"><?= $ringkasanHadir['hadir'] ?></span>
-                    <span class="hadir-summary-label">Hadir</span>
-                </div>
-                <div class="hadir-summary-item">
-                    <span class="hadir-summary-value"><?= $ringkasanHadir['tidak_hadir'] ?></span>
-                    <span class="hadir-summary-label">Belum Hadir</span>
-                </div>
-                <?php if ($ringkasanHadir['walk_in'] > 0): ?>
+            <?php if (isset($ringkasanHadir)): ?>
+                <div class="hadir-summary">
                     <div class="hadir-summary-item">
-                        <span class="hadir-summary-value"><?= $ringkasanHadir['walk_in'] ?></span>
-                        <span class="hadir-summary-label">Tanpa Undangan</span>
+                        <span class="hadir-summary-value"><?= $ringkasanHadir['hadir'] ?></span>
+                        <span class="hadir-summary-label">Hadir</span>
                     </div>
-                <?php endif; ?>
-            </div>
+                    <div class="hadir-summary-item">
+                        <span class="hadir-summary-value"><?= $ringkasanHadir['tidak_hadir'] ?></span>
+                        <span class="hadir-summary-label">Belum Hadir</span>
+                    </div>
+                    <?php if ($ringkasanHadir['walk_in'] > 0): ?>
+                        <div class="hadir-summary-item">
+                            <span class="hadir-summary-value"><?= $ringkasanHadir['walk_in'] ?></span>
+                            <span class="hadir-summary-label">Tanpa Undangan</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <?php if (empty($hadirRows)): ?>
-
                 <p class="empty-text" style="margin-top:12px;">
                     Belum ada peserta yang diundang atau melakukan absensi untuk agenda ini.
                 </p>
-
             <?php else: ?>
-
                 <div class="table-responsive">
                     <table class="table hadir-mini-table">
                         <thead>
@@ -214,11 +210,7 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php
-                            // Cukup tampilkan 5 baris teratas di kartu ringkas ini;
-                            // daftar lengkap ada di tombol "Lihat Selengkapnya" di atas.
-                            $preview = array_slice($hadirRows, 0, 5);
-                            ?>
+                            <?php $preview = array_slice($hadirRows, 0, 5); ?>
                             <?php foreach ($preview as $row): ?>
                                 <?php $hadir = $row['absensi_id'] !== null; ?>
                                 <tr>
@@ -253,16 +245,13 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                         <?= Html::a('lihat semua', ['/member/daftar-hadir', 'agenda_id' => $model->agenda_id]) ?>
                     </p>
                 <?php endif; ?>
-
             <?php endif; ?>
-
         </div>
 
         <!-- ======================================
              DAFTAR UNDANGAN
              ====================================== -->
         <section class="agenda-card agenda-participants-card">
-
             <div class="agenda-section-heading">
                 <h2>Daftar Undangan <span>&middot; <?= $invitedCount ?> orang</span></h2>
                 <div class="agenda-section-heading-right">
@@ -302,14 +291,13 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                     <div class="documentation-empty">Belum ada peserta terdaftar.</div>
                 <?php endif; ?>
             </div>
-
+            
             <?php if (!empty($members)): ?>
                 <div class="participant-summary">
                     <span>Ringkasan Kehadiran</span>
                     <strong><?= $confirmedCount ?> dari <?= $invitedCount ?> peserta hadir</strong>
                 </div>
             <?php endif; ?>
-
         </section>
 
     </div>
@@ -419,7 +407,6 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
     </div>
 
 </div>
-
 
 <?php
 
@@ -557,7 +544,6 @@ $this->registerCss(<<<CSS
     box-sizing: border-box;
 }
 
-/* Header sederhana: judul + satu tombol (Daftar Hadir, QR Code) */
 .agenda-card-header {
     display: flex;
     align-items: center;
@@ -573,7 +559,6 @@ $this->registerCss(<<<CSS
     color: #111827;
 }
 
-/* Header kompleks: judul + statistik + beberapa tombol (Dokumentasi, Undangan) */
 .agenda-section-heading {
     display: flex;
     align-items: flex-start;
@@ -623,11 +608,6 @@ $this->registerCss(<<<CSS
     font-weight: 700;
 }
 
-/* ==========================================
-   TOMBOL HIJAU -- satu keluarga, dua bobot
-   ========================================== */
-
-/* Primer: aksi utama yang mengubah data (Tambah, Kirim, Upload) */
 .btn-card-add,
 .btn-card-primary {
     display: inline-flex;
@@ -651,7 +631,6 @@ $this->registerCss(<<<CSS
     background: #185c37;
 }
 
-/* Sekunder: aksi lihat-saja yang berpindah halaman (Lihat Selengkapnya, Lihat Daftar) */
 .btn-card-secondary {
     display: inline-flex;
     align-items: center;
@@ -849,8 +828,6 @@ $this->registerCss(<<<CSS
 
 /* ==========================================
    DOKUMENTASI RAPAT
-   (sekarang di kolom kanan -- grid lebih sempit
-   dari sebelumnya, karena kolom ini lebih ramping)
    ========================================== */
 
 .agenda-documentation-card,
@@ -937,9 +914,6 @@ $this->registerCss(<<<CSS
     font-size: 11px;
 }
 
-/* Dokumentasi & Undangan sama-sama pakai .agenda-section-heading, tapi
-   Dokumentasi sekarang selalu di kolom sempit -- judul & tombol ditumpuk
-   vertikal supaya tidak sempit-sempitan seperti versi lebar sebelumnya. */
 .agenda-documentation-card .agenda-section-heading {
     flex-direction: column;
     align-items: flex-start;
@@ -1092,7 +1066,6 @@ $this->registerCss(<<<CSS
    ========================================== */
 
 @media (max-width: 900px) {
-
     .agenda-view-layout {
         flex-direction: column;
     }
@@ -1103,16 +1076,12 @@ $this->registerCss(<<<CSS
         position: static;
     }
 
-    /* Di layar sempit, kolom kanan jadi selebar layar lagi --
-       Dokumentasi boleh kembali ke 3 kolom seperti biasa. */
     .documentation-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-
 }
 
 @media (max-width: 700px) {
-
     .agenda-view-header-top {
         flex-direction: column;
         align-items: flex-start;
@@ -1151,7 +1120,6 @@ $this->registerCss(<<<CSS
         justify-content: flex-start;
         width: 100%;
     }
-
 }
 
 CSS
