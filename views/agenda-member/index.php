@@ -9,6 +9,23 @@ declare(strict_types=1);
 use yii\helpers\Html;
 
 $this->title = 'Daftar Undangan';
+$statusMeta = [
+    'terjadwal' => ['class' => 'badge-terjadwal', 'label' => 'Akan Datang'],
+    'berlangsung' => ['class' => 'badge-berlangsung', 'label' => 'Sedang Berlangsung'],
+    'selesai' => ['class' => 'badge-selesai', 'label' => 'Selesai'],
+    'dibatalkan' => ['class' => 'badge-dibatalkan', 'label' => 'Dibatalkan'],
+];
+$agendaStatus = $statusMeta[$agenda->statusSaatIni] ?? ['class' => '', 'label' => $agenda->statusSaatIni];
+$statusCounts = [
+    'terkirim' => 0,
+    'belum_terkirim' => 0,
+    'gagal' => 0,
+];
+foreach ($invitations as $invitation) {
+    if (isset($statusCounts[$invitation->email_status])) {
+        $statusCounts[$invitation->email_status]++;
+    }
+}
 ?>
 
 <div class="breadcrumb">
@@ -23,7 +40,16 @@ $this->title = 'Daftar Undangan';
 
 <div class="card">
 
-    <div class="card-header">
+    <div class="invitation-agenda-status-bar">
+        <span class="badge-status <?= $agendaStatus['class'] ?>"><?= Html::encode($agendaStatus['label']) ?></span>
+        <span><?= Html::encode($agenda->nomor_surat ?: 'Agenda Rapat') ?></span>
+        <span>&middot;</span>
+        <span><?= Html::encode(Yii::$app->formatter->asDate($agenda->tanggal, 'php:d M Y')) ?></span>
+        <span>&middot;</span>
+        <span><?= Html::encode($agenda->lokasi->lokasi ?? '-') ?></span>
+    </div>
+
+    <div class="card-header invitation-header">
         <h2>
             Daftar Undangan
             <span style="font-weight:400;color:#999;font-size:0.85rem;">
@@ -32,6 +58,21 @@ $this->title = 'Daftar Undangan';
         </h2>
 
         <?= Html::a('+ Tambah &amp; Kirim Undangan', ['/agenda-member/compose', 'agenda_id' => $agenda->agenda_id]) ?>
+    </div>
+
+    <div class="invitation-status-summary">
+        <div class="invitation-status-item is-sent">
+            <strong><?= $statusCounts['terkirim'] ?></strong>
+            <span>Terkirim</span>
+        </div>
+        <div class="invitation-status-item is-pending">
+            <strong><?= $statusCounts['belum_terkirim'] ?></strong>
+            <span>Menunggu dikirim</span>
+        </div>
+        <div class="invitation-status-item is-failed">
+            <strong><?= $statusCounts['gagal'] ?></strong>
+            <span>Gagal</span>
+        </div>
     </div>
 
     <table class="table-clean">
@@ -93,3 +134,33 @@ $this->title = 'Daftar Undangan';
     </table>
 
 </div>
+
+<style>
+    .invitation-header { gap: 16px; flex-wrap: wrap; }
+    .invitation-agenda-status-bar {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+        padding: 13px 16px; border-bottom: 1px solid #edf0f2;
+        color: #737981; font-size: .78rem;
+    }
+    .invitation-status-summary {
+        display: flex; gap: 10px; padding: 14px 16px;
+        border-bottom: 1px solid #edf0f2; background: #fbfcfd;
+    }
+    .invitation-status-item {
+        min-width: 120px; padding: 9px 12px; border-radius: 8px;
+        border: 1px solid #e5e7eb; background: #fff;
+    }
+    .invitation-status-item strong { display: block; font-size: 1.05rem; line-height: 1.1; }
+    .invitation-status-item span { display: block; margin-top: 3px; font-size: .72rem; font-weight: 600; }
+    .invitation-status-item.is-sent { border-color: #b9e5c5; color: #1f7a3d; background: #f2fbf4; }
+    .invitation-status-item.is-pending { border-color: #d8dee5; color: #66717c; background: #f8f9fa; }
+    .invitation-status-item.is-failed { border-color: #f1c1c1; color: #a12622; background: #fff5f5; }
+    .invitation-status-badge {
+        display: inline-flex; align-items: center; padding: 5px 9px;
+        border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap;
+    }
+    @media (max-width: 680px) {
+        .invitation-status-summary { flex-wrap: wrap; }
+        .invitation-status-item { flex: 1; min-width: 105px; }
+    }
+</style>

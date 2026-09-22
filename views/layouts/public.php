@@ -24,6 +24,9 @@ $this->registerLinkTag([
 ]);
 
 $identity = Yii::$app->user->isGuest ? null : Yii::$app->user->identity;
+$dashboardRoute = $identity !== null && $identity->role === 'notulen'
+    ? ['/notulis/dashboard']
+    : ['/dashboard/index'];
 
 // public.css membatasi .public-container ke 480px -- pas untuk form absensi
 // satu kolom yang diisi dari HP, tapi terlalu sempit untuk halaman landing
@@ -90,7 +93,7 @@ $this->beginPage();
                 <?= Html::a('Login', ['/site/login'], ['class' => 'btn-public-login']) ?>
             <?php else: ?>
                 <span class="public-user-name"><?= Html::encode($identity->nama) ?></span>
-                <?= Html::a('Dashboard', ['/dashboard/index'], ['class' => 'btn-public-ghost']) ?>
+                <?= Html::a('Dashboard', $dashboardRoute, ['class' => 'btn-public-ghost']) ?>
                 <?php // Logout wajib POST (lihat VerbFilter di SiteController) agar tidak bisa dipicu lewat tautan/gambar dari situs lain. ?>
                 <?= Html::beginForm(['/site/logout'], 'post', ['class' => 'm-0']) ?>
                 <?= Html::submitButton('Keluar', ['class' => 'btn-public-ghost']) ?>

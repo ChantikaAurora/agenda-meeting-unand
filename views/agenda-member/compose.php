@@ -15,6 +15,14 @@ use yii\helpers\Html;
 
 $this->title = 'Tambah & Kirim Undangan';
 $checkedIds = array_flip($checkedIds);
+$statusSaatIni = $agenda->statusSaatIni;
+$statusMeta = [
+    'terjadwal' => ['class' => 'badge-terjadwal', 'label' => 'Akan Datang'],
+    'berlangsung' => ['class' => 'badge-berlangsung', 'label' => 'Sedang Berlangsung'],
+    'selesai' => ['class' => 'badge-selesai', 'label' => 'Selesai'],
+    'dibatalkan' => ['class' => 'badge-dibatalkan', 'label' => 'Dibatalkan'],
+];
+$agendaStatus = $statusMeta[$statusSaatIni] ?? ['class' => '', 'label' => $statusSaatIni];
 ?>
 
 <div class="breadcrumb">
@@ -30,6 +38,18 @@ $checkedIds = array_flip($checkedIds);
 <h1 class="invite-page-title">Tambah &amp; Kirim Undangan</h1>
 <p class="invite-page-subtitle"><?= Html::encode($agenda->pembahasan) ?></p>
 
+<div class="invite-agenda-status-bar">
+    <span class="badge-status <?= $agendaStatus['class'] ?>"><?= Html::encode($agendaStatus['label']) ?></span>
+    <span class="invite-agenda-status-separator">&middot;</span>
+    <span><?= Html::encode($agenda->nomor_surat ?: 'Agenda Rapat') ?></span>
+    <span class="invite-agenda-status-separator">&middot;</span>
+    <span><?= Html::encode(Yii::$app->formatter->asDate($agenda->tanggal, 'php:d M Y')) ?></span>
+    <span class="invite-agenda-status-separator">&middot;</span>
+    <span><?= Html::encode(substr($agenda->waktu_mulai, 0, 5)) ?> - <?= Html::encode(substr($agenda->waktu_selesai, 0, 5)) ?> WIB</span>
+    <span class="invite-agenda-status-separator">&middot;</span>
+    <span><?= Html::encode($agenda->lokasi->lokasi ?? '-') ?></span>
+</div>
+
 <?= Html::beginForm(['/agenda-member/compose', 'agenda_id' => $agenda->agenda_id], 'post') ?>
 
 <div class="invite-compose-layout">
@@ -41,7 +61,7 @@ $checkedIds = array_flip($checkedIds);
 
         <div class="card-header">
             <h2>Pilih Penerima <span style="font-weight:400;color:#999;font-size:0.85rem;">
-                &middot; <?= count($members) ?> narasumber aktif
+                &middot; <?= count($members) ?> penerima aktif
             </span></h2>
         </div>
 
@@ -99,7 +119,7 @@ $checkedIds = array_flip($checkedIds);
                     </select>
 
                     <?php if ($existing !== null): ?>
-                        <span class="invite-status-badge" style="<?= $existing->emailStatusBadgeStyle() ?>">
+                        <span class="invite-status-badge" style="<?= $existing->emailStatusBadgeStyle() ?>" title="Status pengiriman undangan">
                             <?= Html::encode($existing->displayEmailStatus()) ?>
                         </span>
                     <?php endif; ?>
@@ -136,8 +156,8 @@ $checkedIds = array_flip($checkedIds);
             <label class="form-label">Isi Email</label>
             <textarea name="body" class="form-control invite-body-textarea" rows="12" required><?= Html::encode($body) ?></textarea>
             <p class="invite-body-hint">
-                Gunakan <code>{nama}</code> di dalam isi email -- otomatis diganti dengan nama
-                masing-masing penerima saat email dikirim.
+                Klik nama penerima untuk mengisi sapaan otomatis. Untuk beberapa penerima,
+                gunakan <code>{nama}</code> agar nama masing-masing tetap dipakai saat email dikirim.
             </p>
         </div>
 
@@ -161,6 +181,11 @@ $checkedIds = array_flip($checkedIds);
 <style>
     .invite-page-title { margin: 0 0 4px; font-size: 1.5rem; font-weight: 700; }
     .invite-page-subtitle { margin: 0 0 20px; color: #777; font-size: 0.9rem; }
+    .invite-agenda-status-bar {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+        margin: -8px 0 20px; color: #737981; font-size: 0.78rem;
+    }
+    .invite-agenda-status-separator { color: #b5bbc1; }
 
     .invite-compose-layout {
         display: grid;
@@ -227,10 +252,10 @@ $checkedIds = array_flip($checkedIds);
     }
 
     .invite-status-badge {
-        font-size: 0.68rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 10px;
+        padding: 4px 8px;
+        border-radius: 999px;
         flex-shrink: 0;
         white-space: nowrap;
     }
@@ -260,6 +285,28 @@ $checkedIds = array_flip($checkedIds);
     var searchInput = document.getElementById('invite-search');
     var rows = document.querySelectorAll('.invite-recipient-row');
     var counter = document.getElementById('invite-selected-count');
+    var bodyTextarea = document.querySelector('textarea[name="body"]');
+
+    function updateGreeting() {
+        if (!bodyTextarea) return;
+
+        var selectedNames = [];
+        rows.forEach(function (row) {
+            var box = row.querySelector('input[type="checkbox"]');
+            var name = row.querySelector('.invite-recipient-info strong');
+            if (box && box.checked && name) selectedNames.push(name.textContent.trim());
+        });
+
+        var greeting = selectedNames.length === 1
+            ? 'Yth. ' + selectedNames[0] + ','
+            : 'Yth. {nama},';
+        var lines = bodyTextarea.value.split(/\r?\n/);
+
+        if (lines.length > 0 && /^Yth\.\s.*,$/.test(lines[0].trim())) {
+            lines[0] = greeting;
+            bodyTextarea.value = lines.join('\n');
+        }
+    }
 
     function updateCounter() {
         var checked = 0;
@@ -272,9 +319,13 @@ $checkedIds = array_flip($checkedIds);
 
     rows.forEach(function (row) {
         var box = row.querySelector('input[type="checkbox"]');
-        if (box) box.addEventListener('change', updateCounter);
+        if (box) box.addEventListener('change', function () {
+            updateCounter();
+            updateGreeting();
+        });
     });
     updateCounter();
+    updateGreeting();
 
     if (searchInput) {
         searchInput.addEventListener('input', function () {

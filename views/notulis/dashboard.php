@@ -72,11 +72,11 @@ $statusFor = static function ($agenda): string {
                     <td><span class="nt-status <?= $statusInfo['class'] ?>"><?= Html::encode($status) ?></span></td>
                     <td>
                         <?php if ($status === 'Belum Diunggah'): ?>
-                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2 6.6 9.6 8 11l3-3v8zM5 20v-2h14v2H5z"/></svg><span>Upload</span>', ['/lampiran/create', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action primary', 'title' => 'Upload Notulen', 'aria-label' => 'Upload Notulen']) ?>
+                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2 6.6 9.6 8 11l3-3v8zM5 20v-2h14v2H5z"/></svg><span>Upload</span>', ['/lampiran/create', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1], ['class' => 'nt-action primary', 'title' => 'Upload Notulen', 'aria-label' => 'Upload Notulen']) ?>
                         <?php elseif ($status === 'Draft'): ?>
-                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><span>Edit</span>', ['/lampiran/update', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action', 'title' => 'Edit Notulen', 'aria-label' => 'Edit Notulen']) ?>
+                                <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg><span>Edit</span>', ['/lampiran/update', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1], ['class' => 'nt-action', 'title' => 'Edit Notulen', 'aria-label' => 'Edit Notulen']) ?>
                         <?php else: ?>
-                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg><span>Lihat</span>', ['/lampiran/index', 'agenda_id' => $agenda->agenda_id], ['class' => 'nt-action muted', 'title' => 'Lihat Berkas', 'aria-label' => 'Lihat Berkas']) ?>
+                            <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 1 0 6z"/></svg><span>Lihat</span>', ['/lampiran/index', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1], ['class' => 'nt-action muted', 'title' => 'Lihat Berkas', 'aria-label' => 'Lihat Berkas']) ?>
                         <?php endif; ?>
                     </td>
                 </tr>

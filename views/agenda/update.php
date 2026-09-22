@@ -8,7 +8,7 @@ use yii\helpers\Html;
 $this->title = 'Ubah Agenda: ' . $model->pembahasan;
 ?>
 <div class="breadcrumb">
-    <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a> &nbsp;›&nbsp;
+    <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a> &nbsp;›&nbsp;
     <?= Html::a('Kelola Agenda', ['/agenda/index']) ?> &nbsp;›&nbsp;
     <span class="current">Ubah</span>
 </div>
