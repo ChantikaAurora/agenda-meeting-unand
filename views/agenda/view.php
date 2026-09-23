@@ -17,11 +17,11 @@ $canManageLampiran = $identity->can('manageLampiran');
 $statusMap = [
     'terjadwal' => [
         'class' => 'badge-terjadwal',
-        'label' => 'Terjadwal'
+        'label' => 'Akan Datang'
     ],
     'berlangsung' => [
         'class' => 'badge-berlangsung',
-        'label' => 'Berlangsung'
+        'label' => 'Sedang Berlangsung'
     ],
     'selesai' => [
         'class' => 'badge-selesai',
@@ -66,7 +66,7 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
 ?>
 
 <div class="breadcrumb">
-    <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a>
+    <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a>
     &nbsp;›&nbsp;
     <?= Html::a('Kelola Agenda', ['/agenda/index']) ?>
     &nbsp;›&nbsp;

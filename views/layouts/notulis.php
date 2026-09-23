@@ -10,7 +10,8 @@ $initials = $identity ? mb_strtoupper(mb_substr($identity->nama, 0, 1)) : '?';
 $currentController = Yii::$app->controller->id;
 $currentAction = Yii::$app->controller->action->id;
 $isNotulisDashboard = $currentController === 'notulis' && $currentAction === 'dashboard';
-$isNotulisAgenda = $currentController === 'notulis' && $currentAction === 'index';
+$isNotulisAgenda = ($currentController === 'notulis' && $currentAction === 'index')
+    || ($currentController === 'lampiran' && (int) Yii::$app->request->get('notulen', 0) === 1);
 $icons = [
     'grid' => '<svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>',
     'calendar' => '<svg viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM5 9h14v11H5V9z"/></svg>',
@@ -28,6 +29,7 @@ $icons = [
         :root { --green: #287b45; --green-soft: #e9f5ed; --gold: #c9a227; --bg: #f6f8fa; --ink: #202124; --muted: #737981; }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        button, input, select, textarea { font-family: inherit; }
         .nt-topbar { height: 64px; padding: 0 24px; background: #fff; border-bottom: 3px solid var(--gold); display: flex; align-items: center; justify-content: space-between; }
         .nt-brand { display: flex; align-items: center; gap: 10px; color: #1f5d34; font-weight: 700; }
         .nt-brand img { width: 30px; height: 30px; }

@@ -16,8 +16,8 @@ $identity = Yii::$app->user->identity;
 $canManage = $identity->can('manageAgenda');
 
 $statusMap = [
-    'terjadwal' => ['class' => 'badge-terjadwal', 'label' => 'Terjadwal'],
-    'berlangsung' => ['class' => 'badge-berlangsung', 'label' => 'Berlangsung'],
+    'terjadwal' => ['class' => 'badge-terjadwal', 'label' => 'Akan Datang'],
+    'berlangsung' => ['class' => 'badge-berlangsung', 'label' => 'Sedang Berlangsung'],
     'selesai' => ['class' => 'badge-selesai', 'label' => 'Selesai'],
     'dibatalkan' => ['class' => 'badge-dibatalkan', 'label' => 'Dibatalkan'],
 ];
@@ -29,7 +29,7 @@ $iconEdit = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3
 $iconDelete = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-4h6l1 2H8l1-2z"/></svg>';
 ?>
 <div class="breadcrumb">
-    <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a> &nbsp;›&nbsp; <span class="current">Kelola Agenda</span>
+    <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a> &nbsp;›&nbsp; <span class="current">Kelola Agenda</span>
 </div>
 
 <div class="dash-banner">

@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use app\models\Agenda;
 use yii\data\ActiveDataProvider;
+use yii\data\ArrayDataProvider;
 use yii\web\Controller;
 
 /**
@@ -72,19 +73,38 @@ class NotulisController extends Controller
 
         $query->orderBy(['tanggal' => SORT_DESC]);
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $query,
-            'pagination' => [
-                'pageSize' => 10,
-            ],
-        ]);
-
-        // Filter status notulen dilakukan setelah query (karena statusnya turunan dari relasi Lampiran, bukan kolom langsung)
+        // Status notulen adalah nilai turunan dari relasi Lampiran, bukan kolom
+        // langsung di tabel agenda, jadi tidak bisa difilter lewat SQL WHERE.
+        // Sebelumnya filter ini diterapkan SETELAH ActiveDataProvider melakukan
+        // paginasi (hanya 10 baris per halaman), sehingga:
+        //   - baris yang cocok di halaman lain tidak pernah ikut tersaring,
+        //   - jumlah total & jumlah halaman yang ditampilkan tetap memakai
+        //     angka sebelum difilter, sehingga paginasi jadi tidak akurat.
+        // Perbaikannya: ketika ada filter status, ambil semua data lebih dulu,
+        // saring di PHP, baru bungkus hasilnya dengan ArrayDataProvider supaya
+        // total & paginasi mengikuti jumlah data yang benar-benar cocok.
         if (!empty($statusFilter)) {
-            $filtered = array_filter($dataProvider->getModels(), function ($model) use ($statusFilter) {
-                return $this->hitungStatusNotulen($model) === $statusFilter;
-            });
-            $dataProvider->setModels(array_values($filtered));
+            $semuaAgenda = $query->all();
+            $agendaTersaring = array_values(array_filter(
+                $semuaAgenda,
+                function ($model) use ($statusFilter) {
+                    return $this->hitungStatusNotulen($model) === $statusFilter;
+                }
+            ));
+
+            $dataProvider = new ArrayDataProvider([
+                'allModels' => $agendaTersaring,
+                'pagination' => [
+                    'pageSize' => 10,
+                ],
+            ]);
+        } else {
+            $dataProvider = new ActiveDataProvider([
+                'query' => $query,
+                'pagination' => [
+                    'pageSize' => 10,
+                ],
+            ]);
         }
 
         return $this->render('index', [

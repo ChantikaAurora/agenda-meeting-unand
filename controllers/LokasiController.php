@@ -9,6 +9,7 @@ use yii\data\ActiveDataProvider;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
 
 /**
  * LokasiController implements the CRUD actions for Lokasi model.
@@ -24,6 +25,18 @@ class LokasiController extends Controller
         return array_merge(
             parent::behaviors(),
             [
+                'access' => [
+                    'class' => AccessControl::class,
+                    'rules' => [
+                        [
+                            'allow' => true,
+                            'matchCallback' => function () {
+                                $identity = Yii::$app->user->identity;
+                                return !Yii::$app->user->isGuest && $identity->can('manageUnitLokasi');
+                            },
+                        ],
+                    ],
+                ],
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
@@ -33,8 +46,7 @@ class LokasiController extends Controller
             ]
         );
     }
-
-    /**
+   /**
      * Lists all Lokasi models, together with Unit models
      * for the "Unit & Lokasi" tabbed page.
      *

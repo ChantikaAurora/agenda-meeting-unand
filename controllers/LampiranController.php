@@ -45,32 +45,54 @@ class LampiranController extends Controller
         ];
     }
 
-    public function actionCreate($agenda_id)
+    public function actionCreate($agenda_id, $notulen = 0)
     {
         $agenda = $this->findAgenda($agenda_id);
         $model = new Lampiran();
         $model->agenda_id = $agenda->agenda_id;
-        $model->jenis_lampiran = 'Dokumentasi Rapat';
+        $isNotulen = (bool) $notulen;
+        $model->jenis_lampiran = $isNotulen ? 'notulen' : 'Dokumentasi Rapat';
+        if ($isNotulen) {
+            $this->layout = 'notulis';
+        }
 
         if (Yii::$app->request->isPost) {
             $model->load(Yii::$app->request->post());
             $model->agenda_id = $agenda->agenda_id;
-            $model->jenis_lampiran = 'Dokumentasi Rapat';
-            $model->uploadFile = UploadedFile::getInstance($model, 'uploadFile');
-
-            if ($model->uploadFile !== null) {
-                $model->file_path = 'uploads/lampiran/' . Yii::$app->security->generateRandomString(24)
-                    . '.' . strtolower($model->uploadFile->extension);
-            }
+            $model->jenis_lampiran = $isNotulen ? 'notulen' : 'Dokumentasi Rapat';
             $model->uploaded_by = (int) Yii::$app->user->id;
             $model->created_by = (int) Yii::$app->user->id;
 
-            if ($model->validate()) {
-                $directory = Yii::getAlias('@webroot/uploads/lampiran');
+            if ($isNotulen) {
+                $file = UploadedFile::getInstanceByName('file');
+                if ($file === null) {
+                    $model->addError('file_path', 'Silakan pilih file notulen terlebih dahulu.');
+                } elseif (($uploadError = $this->validateUpload($file)) !== null) {
+                    $model->addError('file_path', $uploadError);
+                } else {
+                    $model->file_path = 'uploads/notulen/' . Yii::$app->security->generateRandomString(24)
+                        . '.' . strtolower($file->extension);
+                    $model->original_name = $this->getOriginalFilename($file);
+                }
+            } else {
+                $model->uploadFile = UploadedFile::getInstance($model, 'uploadFile');
+                if ($model->uploadFile !== null) {
+                    $model->file_path = 'uploads/lampiran/' . Yii::$app->security->generateRandomString(24)
+                        . '.' . strtolower($model->uploadFile->extension);
+                }
+            }
+
+            if (!$model->hasErrors() && $model->validate()) {
+                $directory = Yii::getAlias('@webroot/' . ($isNotulen ? 'uploads/notulen' : 'uploads/lampiran'));
                 FileHelper::createDirectory($directory, 0755);
                 $filePath = Yii::getAlias('@webroot/' . $model->file_path);
+                $upload = $isNotulen ? $file : $model->uploadFile;
 
-                if ($model->uploadFile->saveAs($filePath) && $model->save(false)) {
+                if ($upload->saveAs($filePath) && $model->save(false)) {
+                    if ($isNotulen) {
+                        Yii::$app->session->setFlash('success', 'Notulen berhasil diunggah.');
+                        return $this->redirect(['/notulis/index']);
+                    }
                     Yii::$app->session->setFlash('success', 'Foto dokumentasi berhasil diunggah.');
                     return $this->redirect(['/agenda/view', 'id' => $agenda->agenda_id]);
                 }
@@ -85,11 +107,15 @@ class LampiranController extends Controller
         return $this->render('create', [
             'model' => $model,
             'agenda' => $agenda,
+            'isNotulen' => $isNotulen,
         ]);
     }
 
-    public function actionUpdate($agenda_id)
+    public function actionUpdate($agenda_id, $notulen = 0)
     {
+        if ((bool) $notulen) {
+            $this->layout = 'notulis';
+        }
         $agenda = $this->findAgenda($agenda_id);
         $model = Lampiran::find()
             ->andWhere(['agenda_id' => $agenda->agenda_id, 'deleted_at' => null])
@@ -139,8 +165,11 @@ class LampiranController extends Controller
         ]);
     }
 
-    public function actionIndex($agenda_id)
+    public function actionIndex($agenda_id, $notulen = 0)
     {
+        if ((bool) $notulen) {
+            $this->layout = 'notulis';
+        }
         $agenda = $this->findAgenda($agenda_id);
         $model = $this->findLampiran($agenda->agenda_id);
         $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
@@ -153,8 +182,11 @@ class LampiranController extends Controller
         ]);
     }
 
-    public function actionPreview($agenda_id)
+    public function actionPreview($agenda_id, $notulen = 0)
     {
+        if ((bool) $notulen) {
+            $this->layout = 'notulis';
+        }
         $agenda = $this->findAgenda($agenda_id);
         $model = $this->findLampiran($agenda->agenda_id);
         $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
@@ -175,8 +207,11 @@ class LampiranController extends Controller
         ]);
     }
 
-    public function actionDocument($agenda_id)
+    public function actionDocument($agenda_id, $notulen = 0)
     {
+        if ((bool) $notulen) {
+            $this->layout = 'notulis';
+        }
         $agenda = $this->findAgenda($agenda_id);
         $model = $this->findLampiran($agenda->agenda_id);
         $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));

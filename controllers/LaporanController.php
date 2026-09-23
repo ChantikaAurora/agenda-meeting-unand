@@ -6,6 +6,7 @@ use app\models\Unit;
 use Yii;
 use yii\db\Query;
 use yii\web\Controller;
+use yii\filters\AccessControl;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -24,6 +25,27 @@ class LaporanController extends Controller
      * Gunakan layout admin
      */
     public $layout = 'admin';
+
+    /**
+     * @inheritDoc
+     */
+    public function behaviors()
+    {
+        return array_merge(parent::behaviors(), [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'matchCallback' => function () {
+                            $identity = Yii::$app->user->identity;
+                            return !Yii::$app->user->isGuest && $identity->can('viewLaporan');
+                        },
+                    ],
+                ],
+            ],
+        ]);
+    }
 
     /**
      * HALAMAN UTAMA LAPORAN

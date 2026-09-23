@@ -12,6 +12,7 @@ use yii\helpers\Html;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use app\models\DaftarHadirQuery;
@@ -33,19 +34,31 @@ class MemberController extends Controller
      * @inheritDoc
      */
     public function behaviors()
-    {
-        return array_merge(
-            parent::behaviors(),
-            [
-                'verbs' => [
-                    'class' => VerbFilter::className(),
-                    'actions' => [
-                        'delete' => ['POST'],
+{
+    return array_merge(
+        parent::behaviors(),
+        [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'matchCallback' => function () {
+                            $identity = Yii::$app->user->identity;
+                            return !Yii::$app->user->isGuest && $identity->can('manageMember');
+                        },
                     ],
                 ],
-            ]
-        );
-    }
+            ],
+            'verbs' => [
+                'class' => VerbFilter::className(),
+                'actions' => [
+                    'delete' => ['POST'],
+                ],
+            ],
+        ]
+    );
+}
 
     /**
      * Lists all Member models.

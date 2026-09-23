@@ -27,6 +27,21 @@ if ($currentController === 'cetak') {
     $currentController = 'agenda';
 }
 
+// Halaman undangan adalah bagian dari pengelolaan agenda, jadi menu
+// "Kelola Agenda" tetap aktif saat memilih penerima atau melihat undangan.
+if ($currentController === 'agenda-member') {
+    $currentController = 'agenda';
+}
+
+// Upload/lihat dokumentasi & notulen (Lampiran) selalu dibuka dari halaman
+// detail sebuah Agenda, jadi menu "Kelola Agenda" harus tetap disorot di
+// sini juga -- sebelumnya controller ini tidak dipetakan sama sekali,
+// sehingga seluruh item sidebar tampak tidak aktif saat pengguna berada
+// di halaman tambah/lihat dokumentasi rapat.
+if ($currentController === 'lampiran') {
+    $currentController = 'agenda';
+}
+
 // Jenis flash message -> label & ikon toast. Ikon berasal dari konstanta di
 // sini (bukan dari data pengguna), jadi aman dirender sebagai HTML mentah.
 $toastMeta = [

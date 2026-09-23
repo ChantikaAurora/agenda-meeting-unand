@@ -23,7 +23,7 @@ $this->params['breadcrumbs'][] = $this->title;
          ========================================== -->
 
     <div class="lokasi-breadcrumb">
-        <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a>
+        <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a>
         <span>›</span>
         <strong>Kelola Unit &amp; Lokasi</strong>
     </div>

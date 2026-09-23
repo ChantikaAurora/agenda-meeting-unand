@@ -21,7 +21,7 @@ $this->params['breadcrumbs'][] = $this->title;
          ========================================== -->
 
     <div class="member-breadcrumb">
-        <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a>
+        <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a>
         <span>›</span>
         <strong>Kelola Member</strong>
     </div>

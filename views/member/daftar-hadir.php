@@ -492,7 +492,7 @@ JS
     ?>
 
     <div class="dh-breadcrumb">
-        <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a>
+        <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a>
         &nbsp;›&nbsp;
         <a href="<?= Url::to(['/agenda/index']) ?>">Kelola Agenda</a>
         <?php if ($selectedAgenda !== null): ?>

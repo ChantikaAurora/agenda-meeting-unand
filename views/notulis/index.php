@@ -101,17 +101,17 @@ function statusNotulenBadge(Agenda $model)
                         <td><span class="nt-status <?= $statusClass ?>"><?= Html::encode($badge['label']) ?></span></td>
                         <td>
                             <?php if ($badge['label'] === 'Belum Diunggah'): ?>
-                                <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2l-5.4 5.4L8 11l3-3v8zM5 20v-2h14v2H5z"/></svg>Upload Notulen', ['/lampiran/create', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button primary']) ?>
+                                    <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16h2V8l3 3 1.4-1.4L12 4.2l-5.4 5.4L8 11l3-3v8zM5 20v-2h14v2H5z"/></svg>Upload Notulen', ['/lampiran/create', 'agenda_id' => $model->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button primary']) ?>
                             <?php elseif ($badge['label'] === 'Draft'): ?>
-                                <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button']) ?>
+                                    <?= Html::a('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34 2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button']) ?>
                                 <?php if ($hasFile): ?>
-                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button muted']) ?>
+                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button muted']) ?>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <?php if ($hasFile): ?>
-                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button muted']) ?>
+                                    <?= Html::a('Lihat Berkas', ['/lampiran/index', 'agenda_id' => $model->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button muted']) ?>
                                 <?php else: ?>
-                                    <?= Html::a('Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id], ['class' => 'nt-action-button']) ?>
+                                    <?= Html::a('Edit Notulen', ['/lampiran/update', 'agenda_id' => $model->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button']) ?>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </td>
@@ -123,14 +123,26 @@ function statusNotulenBadge(Agenda $model)
         <div class="nt-pagination">
             <span>Menampilkan <?= count($models) ?> agenda</span>
             <div class="nt-pagination-links">
+                <?php
+                // Filter (search & status_notulen) yang sedang aktif harus ikut
+                // dibawa di setiap link pagination -- kalau tidak, begitu pengguna
+                // pindah halaman, filter yang tadi dipilih hilang dan daftar
+                // kembali menampilkan semua agenda tanpa filter.
+                $paramFilter = array_filter([
+                    'search' => $search,
+                    'status_notulen' => $statusFilter,
+                ], static function ($value) {
+                    return $value !== null && $value !== '';
+                });
+                ?>
                 <?php if ($dataProvider->pagination->page > 0): ?>
-                    <?= Html::a('&lsaquo;', ['notulis/index', 'page' => $dataProvider->pagination->page], ['aria-label' => 'Halaman sebelumnya']) ?>
+                    <?= Html::a('&lsaquo;', ['notulis/index', 'page' => $dataProvider->pagination->page] + $paramFilter, ['aria-label' => 'Halaman sebelumnya']) ?>
                 <?php else: ?><span class="disabled">&lsaquo;</span><?php endif; ?>
                 <?php for ($page = 0; $page < $dataProvider->pagination->pageCount; $page++): ?>
-                    <?= Html::a((string) ($page + 1), ['notulis/index', 'page' => $page + 1], ['class' => $page === $dataProvider->pagination->page ? 'active' : '']) ?>
+                    <?= Html::a((string) ($page + 1), ['notulis/index', 'page' => $page + 1] + $paramFilter, ['class' => $page === $dataProvider->pagination->page ? 'active' : '']) ?>
                 <?php endfor; ?>
                 <?php if ($dataProvider->pagination->page < $dataProvider->pagination->pageCount - 1): ?>
-                    <?= Html::a('&rsaquo;', ['notulis/index', 'page' => $dataProvider->pagination->page + 2], ['aria-label' => 'Halaman berikutnya']) ?>
+                    <?= Html::a('&rsaquo;', ['notulis/index', 'page' => $dataProvider->pagination->page + 2] + $paramFilter, ['aria-label' => 'Halaman berikutnya']) ?>
                 <?php else: ?><span class="disabled">&rsaquo;</span><?php endif; ?>
             </div>
         </div>

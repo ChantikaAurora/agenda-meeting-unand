@@ -9,7 +9,7 @@ $this->title = 'Buat Member Baru';
 
 ?>
 <div class="breadcrumb">
-    <a href="<?= Yii::$app->homeUrl ?>">Dashboard</a> &nbsp;›&nbsp;
+    <a href="<?= Yii::$app->urlManager->createUrl(['/dashboard/index']) ?>">Dashboard</a> &nbsp;›&nbsp;
     <?= Html::a('Kelola Member', ['/member/index']) ?> &nbsp;›&nbsp;
     <span class="current">Buat Baru</span>
 </div>

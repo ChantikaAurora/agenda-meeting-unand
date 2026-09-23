@@ -21,7 +21,7 @@ if ($isNotulen) {
     <div class="nt-breadcrumb">
         <a href="<?= Html::encode(Url::to(['/notulis/dashboard'])) ?>">Dashboard</a>
         &nbsp;›&nbsp;
-        <a href="<?= Html::encode(Url::to(['/notulis/index'])) ?>">Kelola Agenda</a>
+        <a href="<?= Html::encode(Url::to(['/notulis/index'])) ?>">Daftar Agenda</a>
         &nbsp;›&nbsp; <span>Upload Notulen</span>
     </div>
 
