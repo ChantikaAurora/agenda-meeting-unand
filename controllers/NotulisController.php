@@ -2,9 +2,12 @@
 
 namespace app\controllers;
 
+use Yii;
 use app\models\Agenda;
 use yii\data\ActiveDataProvider;
 use yii\data\ArrayDataProvider;
+use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
 
 /**
@@ -13,6 +16,38 @@ use yii\web\Controller;
 class NotulisController extends Controller
 {
     public $layout = 'admin';
+
+    /**
+     * Kontrol akses: hanya user yang sudah login dan punya permission
+     * manageAgenda / viewAgenda yang boleh membuka halaman notulis.
+     */
+    public function behaviors()
+    {
+        return array_merge(parent::behaviors(), [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'actions' => ['dashboard', 'index'],
+                        'matchCallback' => function () {
+                            /** @var \app\models\User $identity */
+                            $identity = Yii::$app->user->identity;
+                            return !Yii::$app->user->isGuest
+                                && ($identity->can('manageAgenda') || $identity->can('viewAgenda'));
+                        },
+                    ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'dashboard' => ['GET'],
+                    'index' => ['GET'],
+                ],
+            ],
+        ]);
+    }
 
     public function actionDashboard()
     {
@@ -53,6 +88,7 @@ class NotulisController extends Controller
             'agendas' => $agendas,
         ]);
     }
+
     /**
      * Menampilkan daftar semua agenda beserta status notulennya,
      * dengan dukungan pencarian judul dan filter status notulen.
@@ -62,10 +98,12 @@ class NotulisController extends Controller
     public function actionIndex()
     {
         $this->layout = 'notulis';
-        $search = \Yii::$app->request->get('search');
-        $statusFilter = \Yii::$app->request->get('status_notulen');
+        $search = Yii::$app->request->get('search');
+        $statusFilter = Yii::$app->request->get('status_notulen');
 
-        $query = Agenda::find()->with(['lokasi', 'lampirans']);
+        $query = Agenda::find()
+            ->andWhere(['deleted_at' => null])
+            ->with(['lokasi', 'lampirans']);
 
         if (!empty($search)) {
             $query->andWhere(['like', 'pembahasan', $search]);
