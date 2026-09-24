@@ -60,7 +60,7 @@ $canManage = !Yii::$app->user->isGuest && Yii::$app->user->identity->can('manage
         <?php endif; ?>
         <?php if ($canManage): ?>
             <?= Html::a('Edit Notulen', ['/lampiran/update', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1], ['class' => 'nt-action-button']) ?>
-            <?= Html::beginForm(['/lampiran/delete-notulen', 'agenda_id' => $agenda->agenda_id], 'post', ['style' => 'display:inline;']) ?>
+            <?= Html::beginForm(['/lampiran/delete', 'agenda_id' => $agenda->agenda_id], 'post', ['style' => 'display:inline;']) ?>
                 <?= Html::submitButton('Hapus Berkas', [
                     'class' => 'nt-action-button',
                     'style' => 'border-color:#c0392b;color:#c0392b;cursor:pointer;',

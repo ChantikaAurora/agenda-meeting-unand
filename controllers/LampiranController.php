@@ -15,10 +15,6 @@ use yii\web\UploadedFile;
 
 class LampiranController extends Controller
 {
-    /** Nilai kolom jenis_lampiran untuk notulen dan foto dokumentasi. */
-    private const JENIS_NOTULEN = 'notulen';
-    private const JENIS_FOTO = 'Dokumentasi Rapat';
-
     public $layout = 'admin';
 
     public function behaviors()
@@ -29,12 +25,12 @@ class LampiranController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['create', 'update', 'delete', 'delete-notulen', 'index', 'preview', 'document', 'download'],
+                        'actions' => ['create', 'update', 'delete', 'index', 'preview', 'document', 'download'],
                         'matchCallback' => static function () {
                             /** @var \app\models\User|null $identity */
                             $identity = Yii::$app->user->identity;
-                            return !Yii::$app->user->isGuest
-                                && $identity !== null
+                            return !Yii::$app->user->isGuest 
+                                && $identity !== null 
                                 && $identity->can('manageLampiran');
                         },
                     ],
@@ -44,7 +40,6 @@ class LampiranController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'delete' => ['POST'],
-                    'delete-notulen' => ['POST'],
                 ],
             ],
         ];
@@ -53,36 +48,22 @@ class LampiranController extends Controller
     public function actionCreate($agenda_id, $notulen = 0)
     {
         $agenda = $this->findAgenda($agenda_id);
-        $isNotulen = (bool) $notulen;
-
-        if ($isNotulen) {
-            $this->layout = 'notulis';
-
-            // Satu agenda hanya punya satu notulen aktif. Kalau sudah ada
-            // (misalnya file fisiknya hilang), arahkan ke halaman edit.
-            if ($this->findNotulenOrNull($agenda->agenda_id) !== null) {
-                return $this->redirect(['update', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1]);
-            }
-        }
-
         $model = new Lampiran();
         $model->agenda_id = $agenda->agenda_id;
-        $model->jenis_lampiran = $isNotulen ? self::JENIS_NOTULEN : self::JENIS_FOTO;
-        $file = null;
+        $isNotulen = (bool) $notulen;
+        $model->jenis_lampiran = $isNotulen ? 'notulen' : 'Dokumentasi Rapat';
+        if ($isNotulen) {
+            $this->layout = 'notulis';
+        }
 
         if (Yii::$app->request->isPost) {
-            // Sengaja tanpa $model->load(): semua nilai diisi eksplisit di bawah
-            // supaya field lain (status, deleted_at, email_sent_at, dst.) tidak
-            // bisa disusupkan lewat POST.
+            $model->load(Yii::$app->request->post());
+            $model->agenda_id = $agenda->agenda_id;
+            $model->jenis_lampiran = $isNotulen ? 'notulen' : 'Dokumentasi Rapat';
             $model->uploaded_by = (int) Yii::$app->user->id;
             $model->created_by = (int) Yii::$app->user->id;
 
             if ($isNotulen) {
-                // Form notulen mengirim 'status' dan 'ringkasan' sebagai field
-                // tingkat atas (bukan Lampiran[...]), jadi dibaca langsung.
-                $model->status = $this->postedStatus(Lampiran::STATUS_DRAFT);
-                $model->ringkasan = $this->postedRingkasan();
-
                 $file = UploadedFile::getInstanceByName('file');
                 if ($file === null) {
                     $model->addError('file_path', 'Silakan pilih file notulen terlebih dahulu.');
@@ -95,9 +76,7 @@ class LampiranController extends Controller
                 }
             } else {
                 $model->uploadFile = UploadedFile::getInstance($model, 'uploadFile');
-                if ($model->uploadFile === null) {
-                    $model->addError('uploadFile', 'Silakan pilih foto terlebih dahulu.');
-                } else {
+                if ($model->uploadFile !== null) {
                     $model->file_path = 'uploads/lampiran/' . Yii::$app->security->generateRandomString(24)
                         . '.' . strtolower($model->uploadFile->extension);
                 }
@@ -109,7 +88,7 @@ class LampiranController extends Controller
                 $filePath = Yii::getAlias('@webroot/' . $model->file_path);
                 $upload = $isNotulen ? $file : $model->uploadFile;
 
-                if ($upload !== null && $upload->saveAs($filePath) && $model->save(false)) {
+                if ($upload->saveAs($filePath) && $model->save(false)) {
                     if ($isNotulen) {
                         Yii::$app->session->setFlash('success', 'Notulen berhasil diunggah.');
                         return $this->redirect(['/notulis/index']);
@@ -121,11 +100,7 @@ class LampiranController extends Controller
                 if (is_file($filePath)) {
                     @unlink($filePath);
                 }
-                if ($isNotulen) {
-                    $model->addError('file_path', 'Notulen gagal disimpan. Silakan coba lagi.');
-                } else {
-                    $model->addError('uploadFile', 'Foto gagal disimpan. Silakan coba lagi.');
-                }
+                $model->addError('uploadFile', 'Foto gagal disimpan. Silakan coba lagi.');
             }
         }
 
@@ -142,18 +117,18 @@ class LampiranController extends Controller
             $this->layout = 'notulis';
         }
         $agenda = $this->findAgenda($agenda_id);
-        $model = $this->findNotulenOrNull($agenda->agenda_id);
+        $model = Lampiran::find()
+            ->andWhere(['agenda_id' => $agenda->agenda_id, 'deleted_at' => null])
+            ->orderBy(['lampiran_id' => SORT_DESC])
+            ->one();
 
         if ($model === null) {
-            // Bawa notulen=1 supaya yang terbuka form upload NOTULEN, bukan foto.
-            return $this->redirect(['create', 'agenda_id' => $agenda->agenda_id, 'notulen' => 1]);
+            return $this->redirect(['create', 'agenda_id' => $agenda->agenda_id]);
         }
 
         if (Yii::$app->request->isPost) {
-            $model->ringkasan = $this->postedRingkasan();
-            $model->status = $this->postedStatus((string) $model->status);
-            $model->updated_by = (int) Yii::$app->user->id;
-            $model->updated_at = date('Y-m-d H:i:s');
+            $model->ringkasan = Yii::$app->request->post('ringkasan');
+            $model->status = Yii::$app->request->post('status', Lampiran::STATUS_FINAL);
             $file = UploadedFile::getInstanceByName('file');
 
             if ($file !== null) {
@@ -259,9 +234,7 @@ class LampiranController extends Controller
 
     public function actionDownload($agenda_id): Response
     {
-        // findAgenda() memastikan agenda yang sudah dihapus tidak bisa diunduh notulennya.
-        $agenda = $this->findAgenda($agenda_id);
-        $model = $this->findLampiran($agenda->agenda_id);
+        $model = $this->findLampiran($agenda_id);
         $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
 
         if (!is_file($filePath)) {
@@ -271,9 +244,6 @@ class LampiranController extends Controller
         return Yii::$app->response->sendFile($filePath, $model->original_name ?: basename($filePath));
     }
 
-    /**
-     * Hapus foto dokumentasi (dipanggil dari halaman detail agenda).
-     */
     public function actionDelete($id)
     {
         $model = Lampiran::findOne(['lampiran_id' => $id, 'deleted_at' => null]);
@@ -294,29 +264,6 @@ class LampiranController extends Controller
         return $this->redirect(['/agenda/view', 'id' => $model->agenda_id]);
     }
 
-    /**
-     * Hapus berkas notulen milik satu agenda (dipanggil dari halaman "Lihat Notulen").
-     * Record di-soft-delete, file fisiknya ikut dihapus dari server.
-     */
-    public function actionDeleteNotulen($agenda_id)
-    {
-        $agenda = $this->findAgenda($agenda_id);
-        $model = $this->findLampiran($agenda->agenda_id);
-
-        $filePath = Yii::getAlias('@webroot/' . ltrim($model->file_path, '/'));
-        $model->deleted_at = date('Y-m-d H:i:s');
-        $model->updated_by = (int) Yii::$app->user->id;
-        $model->updated_at = date('Y-m-d H:i:s');
-        $model->save(false);
-
-        if (is_file($filePath)) {
-            @unlink($filePath);
-        }
-
-        Yii::$app->session->setFlash('success', 'Berkas notulen berhasil dihapus.');
-        return $this->redirect(['/notulis/index']);
-    }
-
     private function findAgenda($id): Agenda
     {
         $agenda = Agenda::findOne(['agenda_id' => $id, 'deleted_at' => null]);
@@ -326,58 +273,18 @@ class LampiranController extends Controller
         return $agenda;
     }
 
-    /**
-     * Notulen aktif terbaru milik agenda, atau null kalau belum ada.
-     * Hanya jenis 'notulen': foto dokumentasi tidak ikut terhitung.
-     */
-    private function findNotulenOrNull($agendaId): ?Lampiran
-    {
-        return Lampiran::find()
-            ->andWhere([
-                'agenda_id' => $agendaId,
-                'jenis_lampiran' => self::JENIS_NOTULEN,
-                'deleted_at' => null,
-            ])
-            ->orderBy(['lampiran_id' => SORT_DESC])
-            ->one();
-    }
-
     private function findLampiran($agendaId): Lampiran
     {
-        $model = $this->findNotulenOrNull($agendaId);
+        $model = Lampiran::find()
+            ->andWhere(['agenda_id' => $agendaId, 'deleted_at' => null])
+            ->orderBy(['lampiran_id' => SORT_DESC])
+            ->one();
 
         if ($model === null) {
             throw new NotFoundHttpException('Notulen untuk agenda ini belum tersedia.');
         }
 
         return $model;
-    }
-
-    /**
-     * Status dari form (top-level field 'status'), hanya nilai yang valid.
-     */
-    private function postedStatus(string $fallback): string
-    {
-        $status = Yii::$app->request->post('status');
-
-        return is_string($status) && array_key_exists($status, Lampiran::optsStatus())
-            ? $status
-            : $fallback;
-    }
-
-    /**
-     * Ringkasan dari form (top-level field 'ringkasan'), string atau null.
-     */
-    private function postedRingkasan(): ?string
-    {
-        $ringkasan = Yii::$app->request->post('ringkasan');
-        if (!is_string($ringkasan)) {
-            return null;
-        }
-
-        $ringkasan = trim($ringkasan);
-
-        return $ringkasan !== '' ? $ringkasan : null;
     }
 
     private function getOriginalFilename(UploadedFile $file): string
