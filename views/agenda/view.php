@@ -317,14 +317,31 @@ $pendingCount = max(0, $invitedCount - $confirmedCount);
                 && is_file(Yii::getAlias('@webroot/' . $model->qr_code_path));
             ?>
 
-            <?php if ($qrFileExists): ?>
+            <?php
+            $rapatSelesai = $model->getStatusSaatIni() === \app\models\Agenda::STATUS_SELESAI;
+            $jadwalMulai = $model->getJadwalMulai();
+            $dibukaPukul = $jadwalMulai
+                ? $jadwalMulai->modify('-' . \app\models\Agenda::menitAbsensiDibuka() . ' minutes')->format('H:i')
+                : '-';
+            ?>
+
+            <?php if ($rapatSelesai): ?>
+                <div class="qr-empty">
+                    <div class="qr-empty-icon">QR</div>
+                    <p>Rapat sudah selesai, absensi ditutup. QR Code tidak dapat dipakai lagi.</p>
+                </div>
+            <?php elseif ($qrFileExists): ?>
                 <div class="qr-display">
                     <?= Html::img('@web/' . $model->qr_code_path, [
                         'alt' => 'QR Code Absensi',
                         'class' => 'qr-image',
                     ]) ?>
-                    <div class="qr-title">SCAN UNTUK PRESENSI</div>
-                    <div class="qr-description">Scan QR Code ini untuk melakukan presensi kehadiran rapat.</div>
+                    <div class="qr-title">
+                        <?= $model->absensiTerbuka()
+                            ? 'ABSENSI SEDANG DIBUKA'
+                            : 'ABSENSI DIBUKA PUKUL ' . Html::encode($dibukaPukul) . ' WIB' ?>
+                    </div>
+                    <div class="qr-description">QR Code ini hanya bisa dipakai absen selama absensi dibuka.</div>
                     <div class="qr-actions">
                         <?= Html::a('Download QR', '@web/' . $model->qr_code_path, [
                             'class' => 'btn-qr-download',
