@@ -67,3 +67,8 @@ node_modules
 /web/uploads/signatures/*
 !/web/uploads/signatures/.gitkeep
 !/web/uploads/signatures/.htaccess
+
+# file lampiran yang di-upload pengguna, jangan commit ke repo
+/web/uploads/lampiran/*
+!/web/uploads/lampiran/.gitkeep
+!/web/uploads/lampiran/.htaccess
