@@ -5,17 +5,29 @@ namespace app\controllers;
 use Yii;
 use app\models\Agenda;
 use app\models\Member;
+use app\models\DaftarHadirQuery;
+
 use yii\data\ActiveDataProvider;
 use yii\data\ArrayDataProvider;
 use yii\db\Query;
 use yii\helpers\Html;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use app\models\DaftarHadirQuery;
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
 
 /**
@@ -24,41 +36,73 @@ use app\models\DaftarHadirQuery;
 class MemberController extends Controller
 {
     /**
-     * Gunakan layout admin agar halaman Member
-     * menggunakan tampilan dashboard yang sama
-     * dengan Kelola Agenda dan Unit & Lokasi.
+     * Gunakan layout admin.
      */
     public $layout = 'admin';
 
+
     /**
-     * @inheritDoc
+     * Access Control dan HTTP Verb.
      */
     public function behaviors()
-{
-    return array_merge(
-        parent::behaviors(),
-        [
+    {
+        return array_merge(parent::behaviors(), [
             'access' => [
                 'class' => AccessControl::class,
+
                 'rules' => [
                     [
                         'allow' => true,
+
+                        'actions' => [
+                            'index',
+                            'view',
+                            'daftar-hadir',
+                            'export-pdf',
+                            'export-csv',
+                        ],
+
                         'matchCallback' => function () {
+                            /** @var \app\models\User $identity */
                             $identity = Yii::$app->user->identity;
-                            return !Yii::$app->user->isGuest && $identity->can('manageMember');
+
+                            return !Yii::$app->user->isGuest
+                                && $identity !== null
+                                && $identity->can('manageMember');
+                        },
+                    ],
+
+                                       [
+                        'allow' => true,
+
+                        'actions' => [
+                            'create',
+                            'update',
+                            'delete',
+                        ],
+
+                        'matchCallback' => function () {
+                            /** @var \app\models\User|null $identity */
+                            $identity = Yii::$app->user->identity;
+
+                            return !Yii::$app->user->isGuest
+                                && $identity !== null
+                                && $identity->can('manageMember');
                         },
                     ],
                 ],
             ],
+
             'verbs' => [
-                'class' => VerbFilter::className(),
+                'class' => VerbFilter::class,
+
                 'actions' => [
                     'delete' => ['POST'],
                 ],
             ],
-        ]
-    );
-}
+        ]);
+    }
+
 
     /**
      * Lists all Member models.
@@ -73,7 +117,10 @@ class MemberController extends Controller
          * ============================
          */
         $dataProvider = new ActiveDataProvider([
-            'query' => Member::find()->where(['deleted_at' => null]),
+            'query' => Member::find()
+                ->where([
+                    'deleted_at' => null
+                ]),
         ]);
 
 
@@ -83,15 +130,38 @@ class MemberController extends Controller
          * ============================
          */
 
-        // Daftar agenda
         $agendaList = Agenda::find()
-            ->orderBy(['tanggal' => SORT_DESC])
+            ->orderBy([
+                'tanggal' => SORT_DESC
+            ])
             ->all();
 
-        // Filter
-        $agendaId = Yii::$app->request->get('agenda_id', '');
-        $status = Yii::$app->request->get('status', '');
-        $q = trim((string) Yii::$app->request->get('q', ''));
+
+        /*
+         * ============================
+         * FILTER
+         * ============================
+         */
+        $agendaId = trim(
+            (string) Yii::$app->request->get(
+                'agenda_id',
+                ''
+            )
+        );
+
+        $status = trim(
+            (string) Yii::$app->request->get(
+                'status',
+                ''
+            )
+        );
+
+        $q = trim(
+            (string) Yii::$app->request->get(
+                'q',
+                ''
+            )
+        );
 
 
         /*
@@ -115,7 +185,9 @@ class MemberController extends Controller
                 'ab.tanda_tangan_path',
             ])
 
-            ->from(['am' => 'agenda_member'])
+            ->from([
+                'am' => 'agenda_member'
+            ])
 
             ->innerJoin(
                 ['m' => 'member'],
@@ -171,15 +243,12 @@ class MemberController extends Controller
          * ============================
          */
         if ($status === 'hadir') {
-
             $query->andWhere([
                 'is not',
                 'ab.absensi_id',
                 null
             ]);
-
         } elseif ($status === 'tidak_hadir') {
-
             $query->andWhere([
                 'ab.absensi_id' => null
             ]);
@@ -204,21 +273,25 @@ class MemberController extends Controller
          * STATISTIK
          * ============================
          */
-        $totalPeserta = count($hadirRows);
+        $totalPeserta = count(
+            $hadirRows
+        );
 
         $totalHadir = count(
             array_filter(
                 $hadirRows,
-                fn ($row) => $row['absensi_id'] !== null
+                fn ($row) =>
+                    $row['absensi_id'] !== null
             )
         );
 
-        $totalTidakHadir = $totalPeserta - $totalHadir;
+        $totalTidakHadir =
+            $totalPeserta - $totalHadir;
 
 
         /*
          * ============================
-         * DATA PROVIDER DAFTAR HADIR
+         * DATA PROVIDER
          * ============================
          */
         $hadirDataProvider = new ArrayDataProvider([
@@ -232,46 +305,78 @@ class MemberController extends Controller
 
         /*
          * ============================
-         * RENDER HALAMAN MEMBER
+         * RENDER
          * ============================
          */
         return $this->render('index', [
-
-            // Data Member
             'dataProvider' => $dataProvider,
 
-            // Data Daftar Hadir
-            'hadirDataProvider' => $hadirDataProvider,
-            'agendaList' => $agendaList,
-            'agendaId' => $agendaId,
-            'status' => $status,
-            'q' => $q,
+            'hadirDataProvider' =>
+                $hadirDataProvider,
 
-            // Statistik
-            'totalPeserta' => $totalPeserta,
-            'totalHadir' => $totalHadir,
-            'totalTidakHadir' => $totalTidakHadir,
+            'agendaList' =>
+                $agendaList,
+
+            'agendaId' =>
+                $agendaId,
+
+            'status' =>
+                $status,
+
+            'q' =>
+                $q,
+
+            'totalPeserta' =>
+                $totalPeserta,
+
+            'totalHadir' =>
+                $totalHadir,
+
+            'totalTidakHadir' =>
+                $totalTidakHadir,
         ]);
     }
 
 
     /**
-     * Menampilkan halaman Daftar Hadir secara terpisah.
-     *
-     * Fungsi ini tetap dipertahankan.
+     * Menampilkan halaman Daftar Hadir.
      *
      * @return string
      */
     public function actionDaftarHadir()
     {
         $agendaList = Agenda::find()
-            ->orderBy(['tanggal' => SORT_DESC])
+            ->orderBy([
+                'tanggal' => SORT_DESC
+            ])
             ->all();
 
-        $agendaId = Yii::$app->request->get('agenda_id', '');
-        $status = Yii::$app->request->get('status', '');
-        $q = trim((string) Yii::$app->request->get('q', ''));
 
+        $agendaId = trim(
+            (string) Yii::$app->request->get(
+                'agenda_id',
+                ''
+            )
+        );
+
+        $status = trim(
+            (string) Yii::$app->request->get(
+                'status',
+                ''
+            )
+        );
+
+        $q = trim(
+            (string) Yii::$app->request->get(
+                'q',
+                ''
+            )
+        );
+
+
+        /*
+         * Query tetap dipertahankan.
+         */
         $query = (new Query())
             ->select([
                 'am.agenda_id',
@@ -285,7 +390,9 @@ class MemberController extends Controller
                 'ab.tanda_tangan_path',
             ])
 
-            ->from(['am' => 'agenda_member'])
+            ->from([
+                'am' => 'agenda_member'
+            ])
 
             ->innerJoin(
                 ['m' => 'member'],
@@ -308,11 +415,13 @@ class MemberController extends Controller
                 'am.deleted_at' => null
             ]);
 
+
         if ($agendaId !== '') {
             $query->andWhere([
                 'am.agenda_id' => $agendaId
             ]);
         }
+
 
         if ($q !== '') {
             $query->andWhere([
@@ -322,184 +431,292 @@ class MemberController extends Controller
             ]);
         }
 
-        if ($status === 'hadir') {
 
+        if ($status === 'hadir') {
             $query->andWhere([
                 'is not',
                 'ab.absensi_id',
                 null
             ]);
-
         } elseif ($status === 'tidak_hadir') {
-
             $query->andWhere([
                 'ab.absensi_id' => null
             ]);
         }
 
+
+        /*
+         * Gunakan query utama daftar hadir.
+         * Query ini sudah menyediakan:
+         * jabatan
+         * tanda_tangan_path
+         */
         $hadirRows = DaftarHadirQuery::fetch([
             'agenda_id' => $agendaId,
             'status' => $status,
             'q' => $q,
         ]);
 
-        $totalPeserta = count($hadirRows);
+
+        $totalPeserta =
+            count($hadirRows);
+
 
         $totalHadir = count(
             array_filter(
                 $hadirRows,
-                fn ($row) => $row['absensi_id'] !== null
+                fn ($row) =>
+                    $row['absensi_id'] !== null
             )
         );
 
-        $totalTidakHadir = $totalPeserta - $totalHadir;
 
-        $hadirDataProvider = new ArrayDataProvider([
-            'allModels' => $hadirRows,
+        $totalTidakHadir =
+            $totalPeserta - $totalHadir;
 
-            'pagination' => [
-                'pageSize' => 10
-            ],
-        ]);
 
-        return $this->render('daftar-hadir', [
-            'hadirDataProvider' => $hadirDataProvider,
-            'agendaList' => $agendaList,
-            'agendaId' => $agendaId,
-            'status' => $status,
-            'q' => $q,
-            'totalPeserta' => $totalPeserta,
-            'totalHadir' => $totalHadir,
-            'totalTidakHadir' => $totalTidakHadir,
-        ]);
+        $hadirDataProvider =
+            new ArrayDataProvider([
+                'allModels' =>
+                    $hadirRows,
+
+                'pagination' => [
+                    'pageSize' => 10
+                ],
+            ]);
+
+
+        return $this->render(
+            'daftar-hadir',
+            [
+                'hadirDataProvider' =>
+                    $hadirDataProvider,
+
+                'agendaList' =>
+                    $agendaList,
+
+                'agendaId' =>
+                    $agendaId,
+
+                'status' =>
+                    $status,
+
+                'q' =>
+                    $q,
+
+                'totalPeserta' =>
+                    $totalPeserta,
+
+                'totalHadir' =>
+                    $totalHadir,
+
+                'totalTidakHadir' =>
+                    $totalTidakHadir,
+            ]
+        );
     }
 
 
     /**
-     * Generate dan download PDF Daftar Hadir Peserta.
+     * Export daftar hadir ke PDF.
      *
-     * @return \yii\web\Response
+     * Format:
+     *
+     * No | Nama Peserta | Nomor Identitas |
+     * Unit/Bagian | Jabatan | TTD
+     *
+     * TTD digital ditampilkan sebagai gambar.
+     *
+     * @return Response
      */
     public function actionExportPdf()
     {
-        $agendaId = Yii::$app->request->get('agenda_id', '');
-        $status = Yii::$app->request->get('status', '');
-        $q = trim((string) Yii::$app->request->get('q', ''));
-
-        $query = (new Query())
-            ->select([
-                'am.agenda_id',
-                'am.member_id',
-                'm.nama',
-                'm.identitas_number',
-                'm.instansi',
-                'ag.pembahasan',
-                'ab.absensi_id',
-                'ab.waktu_scan',
-            ])
-
-            ->from(['am' => 'agenda_member'])
-
-            ->innerJoin(
-                ['m' => 'member'],
-                'm.member_id = am.member_id'
+        /*
+         * ============================
+         * FILTER
+         * ============================
+         */
+        $agendaId = trim(
+            (string) Yii::$app->request->get(
+                'agenda_id',
+                ''
             )
+        );
 
-            ->innerJoin(
-                ['ag' => 'agenda'],
-                'ag.agenda_id = am.agenda_id'
+        $status = trim(
+            (string) Yii::$app->request->get(
+                'status',
+                ''
             )
+        );
 
-            ->leftJoin(
-                ['ab' => 'absensi'],
-                'ab.agenda_id = am.agenda_id
-                 AND ab.member_id = am.member_id
-                 AND ab.deleted_at IS NULL'
+        $q = trim(
+            (string) Yii::$app->request->get(
+                'q',
+                ''
             )
+        );
 
-            ->where([
-                'am.deleted_at' => null
-            ]);
 
-        if ($agendaId !== '') {
-            $query->andWhere([
-                'am.agenda_id' => $agendaId
-            ]);
-        }
-
-        if ($q !== '') {
-            $query->andWhere([
-                'or',
-                ['like', 'm.nama', $q],
-                ['like', 'm.identitas_number', $q],
-            ]);
-        }
-
-        if ($status === 'hadir') {
-
-            $query->andWhere([
-                'is not',
-                'ab.absensi_id',
-                null
-            ]);
-
-        } elseif ($status === 'tidak_hadir') {
-
-            $query->andWhere([
-                'ab.absensi_id' => null
-            ]);
-        }
-
+        /*
+         * ============================
+         * DATA
+         * ============================
+         */
         $rows = DaftarHadirQuery::fetch([
             'agenda_id' => $agendaId,
             'status' => $status,
             'q' => $q,
         ]);
 
-        $agendaLabel = 'Semua Agenda';
+
+        /*
+         * ============================
+         * AGENDA
+         * ============================
+         */
+        $agendaLabel =
+            'Semua Agenda';
+
 
         if ($agendaId !== '') {
 
-            $agenda = Agenda::findOne((int) $agendaId);
+            $agenda = Agenda::findOne(
+                (int) $agendaId
+            );
 
             if ($agenda) {
-                $agendaLabel = $agenda->pembahasan ?: 'Agenda';
+                $agendaLabel =
+                    $agenda->pembahasan
+                    ?: 'Agenda';
             }
         }
 
-        $html = '<h2 style="text-align:center;">Daftar Hadir Peserta</h2>';
 
-        $html .= '<p style="text-align:center; color:#666; margin-bottom:16px;">
-                    Agenda: ' . Html::encode($agendaLabel) . '
-                  </p>';
-
-        $html .= '<p style="text-align:center; color:#666; margin-top:0;">
-                    Dicetak pada: ' . date('d M Y H:i') . ' WIB
-                  </p>';
-
-        $html .= '<table width="100%" cellpadding="6" cellspacing="0" border="1"
-                    style="border-collapse:collapse; font-size:12px;">';
-
-        $html .= '
-            <thead>
-                <tr style="background:#f0f0f0;">
-                    <th>No</th>
-                    <th>Nama Peserta</th>
-                    <th>NIK/NIM</th>
-                    <th>Unit/Bagian</th>
-                    <th>Status</th>
-                    <th>Waktu Scan</th>
-                </tr>
-            </thead>
-            <tbody>
+        /*
+         * ============================
+         * HEADER PDF
+         * ============================
+         */
+        $html = '
+            <h2
+                style="
+                    text-align:center;
+                    margin-bottom:5px;
+                "
+            >
+                DAFTAR HADIR PESERTA
+            </h2>
         ';
 
+
+        $html .= '
+            <p
+                style="
+                    text-align:center;
+                    margin-top:0;
+                    margin-bottom:4px;
+                "
+            >
+                <strong>Agenda:</strong>
+                ' . Html::encode(
+                    $agendaLabel
+                ) . '
+            </p>
+        ';
+
+
+        $html .= '
+            <p
+                style="
+                    text-align:center;
+                    margin-top:0;
+                    color:#666;
+                    font-size:10px;
+                "
+            >
+                Dicetak pada:
+                ' . date(
+                    'd M Y H:i'
+                ) . '
+                WIB
+            </p>
+        ';
+
+
+        /*
+         * ============================
+         * TABEL
+         * ============================
+         */
+        $html .= '
+            <table
+                width="100%"
+                cellpadding="6"
+                cellspacing="0"
+                border="1"
+                style="
+                    border-collapse:collapse;
+                    font-size:10px;
+                    width:100%;
+                "
+            >
+
+                <thead>
+                    <tr
+                        style="
+                            background:#f0f0f0;
+                            text-align:center;
+                        "
+                    >
+
+                        <th width="5%">
+                            No
+                        </th>
+
+                        <th width="22%">
+                            Nama Peserta
+                        </th>
+
+                        <th width="20%">
+                            Nomor Identitas
+                        </th>
+
+                        <th width="17%">
+                            Unit/Bagian
+                        </th>
+
+                        <th width="14%">
+                            Jabatan
+                        </th>
+
+                        <th width="22%">
+                            TTD
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+        ';
+
+
+        /*
+         * ============================
+         * DATA KOSONG
+         * ============================
+         */
         if (empty($rows)) {
 
             $html .= '
                 <tr>
-                    <td colspan="6"
-                        style="text-align:center; padding:12px;">
+                    <td
+                        colspan="6"
+                        style="
+                            text-align:center;
+                            padding:15px;
+                        "
+                    >
                         Tidak ada data peserta.
                     </td>
                 </tr>
@@ -509,103 +726,1071 @@ class MemberController extends Controller
 
             $no = 1;
 
+
             foreach ($rows as $row) {
 
-                $hadir = $row['absensi_id'] !== null;
+                /*
+                 * ============================
+                 * TTD
+                 * ============================
+                 */
+                $signatureHtml = '';
 
-                $waktu = $hadir
-                    ? date('H:i', strtotime($row['waktu_scan'])) . ' WIB'
-                    : '-';
+                $signatureFile =
+                    $this->resolveSignatureFile(
+                        $row['tanda_tangan_path']
+                        ?? ''
+                    );
 
-                $statusLabel = $hadir
-                    ? 'Hadir'
-                    : 'Tidak Hadir';
 
+                if (
+                    $row['absensi_id'] !== null
+                    && $signatureFile !== null
+                ) {
+
+                    $mimeType =
+                        $this->getSignatureMimeType(
+                            $signatureFile
+                        );
+
+
+                    if ($mimeType !== null) {
+
+                        $signatureData =
+                            @file_get_contents(
+                                $signatureFile
+                            );
+
+
+                        if (
+                            $signatureData !== false
+                        ) {
+
+                            $signatureBase64 =
+                                base64_encode(
+                                    $signatureData
+                                );
+
+
+                            $signatureHtml = '
+                                <img
+                                    src="data:'
+                                    . $mimeType
+                                    . ';base64,'
+                                    . $signatureBase64
+                                    . '"
+                                    style="
+                                        width:100px;
+                                        height:45px;
+                                    "
+                                >
+                            ';
+                        }
+                    }
+                }
+
+
+                /*
+                 * Jika TTD tidak tersedia.
+                 */
+                if (
+                    $signatureHtml === ''
+                ) {
+
+                    $signatureHtml = '
+                        <div
+                            style="
+                                height:45px;
+                                text-align:center;
+                                padding-top:15px;
+                            "
+                        >
+                            __________________
+                        </div>
+                    ';
+                }
+
+
+                /*
+                 * ============================
+                 * BARIS
+                 * ============================
+                 */
                 $html .= '
                     <tr>
-                        <td>' . $no++ . '</td>
-                        <td>' . Html::encode($row['nama'] ?: '-') . '</td>
-                        <td>' . Html::encode($row['identitas_number'] ?: '-') . '</td>
-                        <td>' . Html::encode($row['instansi'] ?: '-') . '</td>
-                        <td>' . $statusLabel . '</td>
-                        <td>' . $waktu . '</td>
+
+                        <td
+                            style="
+                                text-align:center;
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . $no++ . '
+                        </td>
+
+                        <td
+                            style="
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . Html::encode(
+                                $row['nama']
+                                ?: '-'
+                            ) . '
+                        </td>
+
+                        <td
+                            style="
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . Html::encode(
+                                $row['identitas_number']
+                                ?: '-'
+                            ) . '
+                        </td>
+
+                        <td
+                            style="
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . Html::encode(
+                                $row['instansi']
+                                ?: '-'
+                            ) . '
+                        </td>
+
+                        <td
+                            style="
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . Html::encode(
+                                $row['jabatan']
+                                ?: '-'
+                            ) . '
+                        </td>
+
+                        <td
+                            style="
+                                height:55px;
+                                text-align:center;
+                                vertical-align:middle;
+                            "
+                        >
+                            ' . $signatureHtml . '
+                        </td>
+
                     </tr>
                 ';
             }
         }
 
-        $html .= '</tbody></table>';
+
+        $html .= '
+                </tbody>
+            </table>
+        ';
 
 
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
+        /*
+         * ============================
+         * DOMPDF
+         * ============================
+         */
+        $options =
+            new Options();
 
-        $dompdf = new Dompdf($options);
+        $options->set(
+            'isRemoteEnabled',
+            true
+        );
 
-        $dompdf->loadHtml($html);
 
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf =
+            new Dompdf(
+                $options
+            );
+
+
+        $dompdf->loadHtml(
+            $html
+        );
+
+
+        $dompdf->setPaper(
+            'A4',
+            'portrait'
+        );
+
 
         $dompdf->render();
 
 
-        return Yii::$app->response->sendContentAsFile(
-            $dompdf->output(),
-            'daftar-hadir-peserta-' . date('Y-m-d') . '.pdf',
-            [
-                'mimeType' => 'application/pdf',
-                'inline' => false
-            ]
-        );
+        return Yii::$app->response
+            ->sendContentAsFile(
+                $dompdf->output(),
+
+                'daftar-hadir-peserta-'
+                . date('Y-m-d')
+                . '.pdf',
+
+                [
+                    'mimeType' =>
+                        'application/pdf',
+
+                    'inline' => false,
+                ]
+            );
     }
 
-        public function actionExportCsv()
-    {
-        $agendaId = (string) Yii::$app->request->get('agenda_id', '');
-        $status = (string) Yii::$app->request->get('status', '');
-        $q = trim((string) Yii::$app->request->get('q', ''));
 
-        $rows = \app\models\DaftarHadirQuery::fetch([
+    /**
+     * Export daftar hadir ke Excel XLSX.
+     *
+     * Format:
+     *
+     * No | Nama Peserta | Nomor Identitas |
+     * Unit/Bagian | Jabatan | TTD
+     *
+     * TTD digital ditampilkan sebagai gambar.
+     *
+     * Route tetap actionExportCsv()
+     * agar tombol lama tidak perlu diubah.
+     *
+     * @return Response
+     */
+    public function actionExportCsv()
+    {
+        /*
+         * ============================
+         * FILTER
+         * ============================
+         */
+        $agendaId = trim(
+            (string) Yii::$app->request->get(
+                'agenda_id',
+                ''
+            )
+        );
+
+        $status = trim(
+            (string) Yii::$app->request->get(
+                'status',
+                ''
+            )
+        );
+
+        $q = trim(
+            (string) Yii::$app->request->get(
+                'q',
+                ''
+            )
+        );
+
+
+        /*
+         * ============================
+         * DATA
+         * ============================
+         */
+        $rows = DaftarHadirQuery::fetch([
             'agenda_id' => $agendaId,
             'status' => $status,
             'q' => $q,
         ]);
 
-        $filenameParts = ['daftar-hadir'];
+
+        /*
+         * ============================
+         * AGENDA
+         * ============================
+         */
+        $agendaLabel =
+            'Semua Agenda';
+
+
         if ($agendaId !== '') {
-            $filenameParts[] = $agendaId;
+
+            $agenda = Agenda::findOne(
+                (int) $agendaId
+            );
+
+            if ($agenda) {
+                $agendaLabel =
+                    $agenda->pembahasan
+                    ?: 'Agenda';
+            }
         }
-        $filenameParts[] = date('Ymd-His');
-        $filename = implode('-', $filenameParts) . '.csv';
 
-        Yii::$app->response->format = \yii\web\Response::FORMAT_RAW;
-        Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        Yii::$app->response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
 
-        $stream = fopen('php://temp', 'r+');
+        /*
+         * ============================
+         * SPREADSHEET
+         * ============================
+         */
+        $spreadsheet =
+            new Spreadsheet();
 
-        // BOM supaya Excel membaca karakter UTF-8 (nama dengan huruf non-ASCII) dengan benar.
-        fwrite($stream, "\xEF\xBB\xBF");
 
-        fputcsv($stream, ['NIK/NIM', 'Nama Peserta', 'Unit/Bagian', 'Agenda', 'Waktu Scan', 'Status']);
+        $sheet =
+            $spreadsheet->getActiveSheet();
+
+
+        $sheet->setTitle(
+            'Daftar Hadir'
+        );
+
+
+        /*
+         * ============================
+         * JUDUL
+         * ============================
+         */
+        $sheet->mergeCells(
+            'A1:F1'
+        );
+
+
+        $sheet->setCellValue(
+            'A1',
+            'DAFTAR HADIR PESERTA'
+        );
+
+
+        $sheet->getStyle(
+            'A1'
+        )->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 16,
+            ],
+
+            'alignment' => [
+                'horizontal' =>
+                    Alignment::HORIZONTAL_CENTER,
+
+                'vertical' =>
+                    Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+
+        $sheet->getRowDimension(
+            1
+        )->setRowHeight(25);
+
+
+        /*
+         * ============================
+         * AGENDA
+         * ============================
+         */
+        $sheet->mergeCells(
+            'A2:F2'
+        );
+
+
+        $sheet->setCellValueExplicit(
+            'A2',
+            'Agenda: ' . $agendaLabel,
+            DataType::TYPE_STRING
+        );
+
+
+        $sheet->getStyle(
+            'A2'
+        )->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 11,
+            ],
+
+            'alignment' => [
+                'horizontal' =>
+                    Alignment::HORIZONTAL_CENTER,
+
+                'vertical' =>
+                    Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+
+        /*
+         * ============================
+         * TANGGAL CETAK
+         * ============================
+         */
+        $sheet->mergeCells(
+            'A3:F3'
+        );
+
+
+        $sheet->setCellValueExplicit(
+            'A3',
+            'Dicetak pada: '
+            . date('d M Y H:i')
+            . ' WIB',
+            DataType::TYPE_STRING
+        );
+
+
+        $sheet->getStyle(
+            'A3'
+        )->applyFromArray([
+            'font' => [
+                'size' => 9,
+            ],
+
+            'alignment' => [
+                'horizontal' =>
+                    Alignment::HORIZONTAL_CENTER,
+
+                'vertical' =>
+                    Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+
+        /*
+         * ============================
+         * HEADER
+         * ============================
+         */
+        $headers = [
+            'No',
+            'Nama Peserta',
+            'Nomor Identitas',
+            'Unit/Bagian',
+            'Jabatan',
+            'TTD',
+        ];
+
+
+        $sheet->fromArray(
+            $headers,
+            null,
+            'A5'
+        );
+
+
+        /*
+         * ============================
+         * STYLE HEADER
+         * ============================
+         */
+        $sheet->getStyle(
+            'A5:F5'
+        )->applyFromArray([
+            'font' => [
+                'bold' => true,
+            ],
+
+            'alignment' => [
+                'horizontal' =>
+                    Alignment::HORIZONTAL_CENTER,
+
+                'vertical' =>
+                    Alignment::VERTICAL_CENTER,
+
+                'wrapText' => true,
+            ],
+
+            'fill' => [
+                'fillType' =>
+                    Fill::FILL_SOLID,
+
+                'startColor' => [
+                    'rgb' => 'E7E6E6',
+                ],
+            ],
+
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' =>
+                        Border::BORDER_THIN,
+                ],
+            ],
+        ]);
+
+
+        $sheet->getRowDimension(
+            5
+        )->setRowHeight(30);
+
+
+        /*
+         * ============================
+         * DATA
+         * ============================
+         */
+        $rowNumber = 6;
+        $no = 1;
+
 
         foreach ($rows as $row) {
-            $hadir = $row['absensi_id'] !== null;
-            fputcsv($stream, [
-                $row['identitas_number'] ?: '-',
-                $row['nama'],
-                $row['instansi'] ?: '-',
-                $row['pembahasan'],
-                $hadir ? Yii::$app->formatter->asDatetime($row['waktu_scan'], 'php:d M Y H:i') : '-',
-                $hadir ? 'Hadir' : 'Tidak Hadir',
-            ]);
+
+            /*
+             * Nomor
+             */
+            $sheet->setCellValue(
+                'A' . $rowNumber,
+                $no++
+            );
+
+
+            /*
+             * Gunakan explicit string
+             * untuk data teks.
+             *
+             * Ini membantu mencegah
+             * input teks dianggap formula
+             * oleh Excel.
+             */
+            $sheet->setCellValueExplicit(
+                'B' . $rowNumber,
+                (string) (
+                    $row['nama'] ?: '-'
+                ),
+                DataType::TYPE_STRING
+            );
+
+
+            $sheet->setCellValueExplicit(
+                'C' . $rowNumber,
+                (string) (
+                    $row['identitas_number']
+                    ?: '-'
+                ),
+                DataType::TYPE_STRING
+            );
+
+
+            $sheet->setCellValueExplicit(
+                'D' . $rowNumber,
+                (string) (
+                    $row['instansi']
+                    ?: '-'
+                ),
+                DataType::TYPE_STRING
+            );
+
+
+            $sheet->setCellValueExplicit(
+                'E' . $rowNumber,
+                (string) (
+                    $row['jabatan']
+                    ?: '-'
+                ),
+                DataType::TYPE_STRING
+            );
+
+
+            /*
+             * ============================
+             * TTD
+             * ============================
+             */
+            $signatureFile =
+                $this->resolveSignatureFile(
+                    $row['tanda_tangan_path']
+                    ?? ''
+                );
+
+
+            if (
+                $row['absensi_id'] !== null
+                && $signatureFile !== null
+            ) {
+
+                $mimeType =
+                    $this->getSignatureMimeType(
+                        $signatureFile
+                    );
+
+
+                /*
+                 * Drawing hanya digunakan
+                 * untuk file gambar yang valid.
+                 */
+                if ($mimeType !== null) {
+
+                    $drawing =
+                        new Drawing();
+
+
+                    $drawing->setName(
+                        'Tanda Tangan'
+                    );
+
+
+                    $drawing->setDescription(
+                        'Tanda tangan peserta'
+                    );
+
+
+                    $drawing->setPath(
+                        $signatureFile
+                    );
+
+
+                    $drawing->setHeight(
+                        45
+                    );
+
+
+                    $drawing->setCoordinates(
+                        'F' . $rowNumber
+                    );
+
+
+                    $drawing->setOffsetX(
+                        10
+                    );
+
+
+                    $drawing->setOffsetY(
+                        5
+                    );
+
+
+                    $drawing->setWorksheet(
+                        $sheet
+                    );
+                }
+            }
+
+
+            /*
+             * Tinggi baris untuk TTD.
+             */
+            $sheet
+                ->getRowDimension(
+                    $rowNumber
+                )
+                ->setRowHeight(55);
+
+
+            $rowNumber++;
         }
 
-        rewind($stream);
-        $csvContent = stream_get_contents($stream);
-        fclose($stream);
 
-        return $csvContent;
+        /*
+         * ============================
+         * BARIS TERAKHIR
+         * ============================
+         */
+        $lastRow = max(
+            5,
+            $rowNumber - 1
+        );
+
+
+        /*
+         * ============================
+         * BORDER TABEL
+         * ============================
+         */
+        $sheet
+            ->getStyle(
+                'A5:F' . $lastRow
+            )
+            ->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' =>
+                            Border::BORDER_THIN,
+                    ],
+                ],
+            ]);
+
+
+        /*
+         * ============================
+         * ALIGNMENT
+         * ============================
+         */
+        $sheet
+            ->getStyle(
+                'A6:A' . $lastRow
+            )
+            ->getAlignment()
+            ->setHorizontal(
+                Alignment::HORIZONTAL_CENTER
+            );
+
+
+        $sheet
+            ->getStyle(
+                'C6:C' . $lastRow
+            )
+            ->getAlignment()
+            ->setHorizontal(
+                Alignment::HORIZONTAL_CENTER
+            );
+
+
+        $sheet
+            ->getStyle(
+                'F6:F' . $lastRow
+            )
+            ->getAlignment()
+            ->setHorizontal(
+                Alignment::HORIZONTAL_CENTER
+            );
+
+
+        $sheet
+            ->getStyle(
+                'A6:F' . $lastRow
+            )
+            ->getAlignment()
+            ->setVertical(
+                Alignment::VERTICAL_CENTER
+            );
+
+
+        $sheet
+            ->getStyle(
+                'A5:F' . $lastRow
+            )
+            ->getAlignment()
+            ->setWrapText(true);
+
+
+        /*
+         * ============================
+         * LEBAR KOLOM
+         * ============================
+         */
+        $sheet
+            ->getColumnDimension('A')
+            ->setWidth(7);
+
+
+        $sheet
+            ->getColumnDimension('B')
+            ->setWidth(28);
+
+
+        $sheet
+            ->getColumnDimension('C')
+            ->setWidth(22);
+
+
+        $sheet
+            ->getColumnDimension('D')
+            ->setWidth(20);
+
+
+        $sheet
+            ->getColumnDimension('E')
+            ->setWidth(18);
+
+
+        $sheet
+            ->getColumnDimension('F')
+            ->setWidth(22);
+
+
+        /*
+         * ============================
+         * FILTER
+         * ============================
+         */
+        $sheet->setAutoFilter(
+            'A5:F' . $lastRow
+        );
+
+
+        /*
+         * ============================
+         * FREEZE HEADER
+         * ============================
+         */
+        $sheet->freezePane(
+            'A6'
+        );
+
+
+        /*
+         * ============================
+         * PRINT SETTING
+         * ============================
+         */
+        $sheet->getPageSetup()
+            ->setOrientation(
+                PageSetup::ORIENTATION_LANDSCAPE
+            );
+
+
+        $sheet->getPageSetup()
+            ->setPaperSize(
+                PageSetup::PAPERSIZE_A4
+            );
+
+
+        $sheet->getPageSetup()
+            ->setFitToWidth(1);
+
+
+        $sheet->getPageSetup()
+            ->setFitToHeight(0);
+
+
+        $sheet->getPageMargins()
+            ->setTop(0.5);
+
+
+        $sheet->getPageMargins()
+            ->setRight(0.5);
+
+
+        $sheet->getPageMargins()
+            ->setBottom(0.5);
+
+
+        $sheet->getPageMargins()
+            ->setLeft(0.5);
+
+
+        /*
+         * ============================
+         * NAMA FILE
+         * ============================
+         */
+        $filenameParts = [
+            'daftar-hadir'
+        ];
+
+
+        if ($agendaId !== '') {
+            $filenameParts[] =
+                $agendaId;
+        }
+
+
+        $filenameParts[] =
+            date('Ymd-His');
+
+
+        $filename =
+            implode(
+                '-',
+                $filenameParts
+            )
+            . '.xlsx';
+
+
+        /*
+         * ============================
+         * GENERATE XLSX
+         * ============================
+         */
+        $writer =
+            new Xlsx(
+                $spreadsheet
+            );
+
+
+        ob_start();
+
+        $writer->save(
+            'php://output'
+        );
+
+        $content =
+            ob_get_clean();
+
+
+        return Yii::$app->response
+            ->sendContentAsFile(
+                $content,
+                $filename,
+                [
+                    'mimeType' =>
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+                    'inline' => false,
+                ]
+            );
+    }
+
+
+    /**
+     * Memastikan file TTD benar-benar berada
+     * di dalam folder webroot aplikasi.
+     *
+     * Mencegah path seperti:
+     * ../../file-rahasia
+     *
+     * @param string $relativePath
+     * @return string|null
+     */
+    private function resolveSignatureFile(
+        string $relativePath
+    ): ?string {
+        $relativePath =
+            trim($relativePath);
+
+
+        if ($relativePath === '') {
+            return null;
+        }
+
+
+        /*
+         * Jangan menerima URL eksternal.
+         */
+        if (
+            preg_match(
+                '#^(https?:)?//#i',
+                $relativePath
+            )
+        ) {
+            return null;
+        }
+
+
+        /*
+         * Normalisasi slash.
+         */
+        $relativePath =
+            ltrim(
+                str_replace(
+                    '\\',
+                    '/',
+                    $relativePath
+                ),
+                '/'
+            );
+
+
+        /*
+         * Tolak traversal.
+         */
+        if (
+            str_contains(
+                $relativePath,
+                '../'
+            )
+            ||
+            str_contains(
+                $relativePath,
+                '..\\'
+            )
+        ) {
+            return null;
+        }
+
+
+        $webroot =
+            realpath(
+                Yii::getAlias(
+                    '@webroot'
+                )
+            );
+
+
+        if ($webroot === false) {
+            return null;
+        }
+
+
+        $file =
+            realpath(
+                $webroot
+                . DIRECTORY_SEPARATOR
+                . $relativePath
+            );
+
+
+        if ($file === false) {
+            return null;
+        }
+
+
+        /*
+         * Pastikan file tetap berada
+         * di dalam webroot.
+         */
+        $webrootPrefix =
+            rtrim(
+                $webroot,
+                DIRECTORY_SEPARATOR
+            )
+            . DIRECTORY_SEPARATOR;
+
+
+        if (
+            !str_starts_with(
+                $file,
+                $webrootPrefix
+            )
+        ) {
+            return null;
+        }
+
+
+        if (!is_file($file)) {
+            return null;
+        }
+
+
+        return $file;
+    }
+
+
+    /**
+     * Memastikan file TTD adalah gambar
+     * yang didukung.
+     *
+     * @param string $file
+     * @return string|null
+     */
+    private function getSignatureMimeType(
+        string $file
+    ): ?string {
+        if (!is_file($file)) {
+            return null;
+        }
+
+
+        $mimeType = null;
+
+
+        if (
+            function_exists(
+                'mime_content_type'
+            )
+        ) {
+            $mimeType =
+                mime_content_type(
+                    $file
+                );
+        }
+
+
+        $allowed = [
+            'image/png',
+            'image/jpeg',
+            'image/gif',
+        ];
+
+
+        if (
+            !in_array(
+                $mimeType,
+                $allowed,
+                true
+            )
+        ) {
+            return null;
+        }
+
+
+        return $mimeType;
     }
 
 
@@ -618,9 +1803,15 @@ class MemberController extends Controller
      */
     public function actionView($member_id)
     {
-        return $this->render('view', [
-            'model' => $this->findModel($member_id),
-        ]);
+        return $this->render(
+            'view',
+            [
+                'model' =>
+                    $this->findModel(
+                        $member_id
+                    ),
+            ]
+        );
     }
 
 
@@ -631,19 +1822,28 @@ class MemberController extends Controller
      */
     public function actionCreate()
     {
-        $model = new Member();
+        $model =
+            new Member();
+
 
         if ($this->request->isPost) {
 
-            if ($model->load($this->request->post())) {
+            if (
+                $model->load(
+                    $this->request->post()
+                )
+            ) {
 
-                $model->created_by = Yii::$app->user->id;
+                $model->created_by =
+                    Yii::$app->user->id;
+
 
                 if ($model->save()) {
 
                     return $this->redirect([
                         'view',
-                        'member_id' => $model->member_id
+                        'member_id' =>
+                            $model->member_id
                     ]);
                 }
             }
@@ -653,9 +1853,13 @@ class MemberController extends Controller
             $model->loadDefaultValues();
         }
 
-        return $this->render('create', [
-            'model' => $model,
-        ]);
+
+        return $this->render(
+            'create',
+            [
+                'model' => $model,
+            ]
+        );
     }
 
 
@@ -668,27 +1872,41 @@ class MemberController extends Controller
      */
     public function actionUpdate($member_id)
     {
-        $model = $this->findModel($member_id);
+        $model =
+            $this->findModel(
+                $member_id
+            );
+
 
         if (
-            $this->request->isPost &&
-            $model->load($this->request->post())
+            $this->request->isPost
+            &&
+            $model->load(
+                $this->request->post()
+            )
         ) {
 
-            $model->updated_by = Yii::$app->user->id;
+            $model->updated_by =
+                Yii::$app->user->id;
+
 
             if ($model->save()) {
 
                 return $this->redirect([
                     'view',
-                    'member_id' => $model->member_id
+                    'member_id' =>
+                        $model->member_id
                 ]);
             }
         }
 
-        return $this->render('update', [
-            'model' => $model,
-        ]);
+
+        return $this->render(
+            'update',
+            [
+                'model' => $model,
+            ]
+        );
     }
 
 
@@ -701,11 +1919,33 @@ class MemberController extends Controller
      */
     public function actionDelete($member_id)
     {
-        $model = $this->findModel($member_id);
-        $model->deleted_at = date('Y-m-d H:i:s');
+        $model =
+            $this->findModel(
+                $member_id
+            );
+
+
+        $model->deleted_at =
+            date('Y-m-d H:i:s');
+
+
         $model->is_active = 0;
-        $model->updated_by = Yii::$app->user->id;
-        $model->save(false, ['deleted_at', 'is_active', 'updated_by', 'updated_at']);
+
+
+        $model->updated_by =
+            Yii::$app->user->id;
+
+
+        $model->save(
+            false,
+            [
+                'deleted_at',
+                'is_active',
+                'updated_by',
+                'updated_at',
+            ]
+        );
+
 
         return $this->redirect([
             'index'
@@ -724,11 +1964,13 @@ class MemberController extends Controller
     {
         if (
             ($model = Member::findOne([
-                'member_id' => $member_id
+                'member_id' =>
+                    $member_id
             ])) !== null
         ) {
             return $model;
         }
+
 
         throw new NotFoundHttpException(
             'The requested page does not exist.'

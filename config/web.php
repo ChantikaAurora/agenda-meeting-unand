@@ -49,14 +49,19 @@ $config = [
             ],
         ],
         'db' => require __DIR__ . '/db.php',
-        /*
+
+        'formatter' => [
+            'defaultTimeZone' => 'Asia/Jakarta',
+            'timeZone' => 'Asia/Jakarta',
+        ],
+
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
             ],
         ],
-        */
+
     ],
     'params' => $params,
 ];
