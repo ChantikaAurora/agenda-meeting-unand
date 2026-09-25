@@ -44,6 +44,7 @@ class MemberController extends Controller
                     [
                         'allow' => true,
                         'matchCallback' => function () {
+                             /** @var \app\models\User|null $identity */
                             $identity = Yii::$app->user->identity;
                             return !Yii::$app->user->isGuest && $identity->can('manageMember');
                         },
